@@ -15,6 +15,7 @@ mod jobs;
 mod models;
 mod routes;
 mod state;
+mod static_assets;
 
 /// Frontend UI components only - do not place backend logic here
 mod components {

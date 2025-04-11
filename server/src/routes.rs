@@ -20,6 +20,10 @@ pub fn routes(app_state: AppState) -> axum::Router {
             get(github_auth::github_auth_callback),
         )
         .route("/auth/logout", get(github_auth::logout))
+        .route(
+            "/static/*path",
+            get(crate::static_assets::serve_static_file),
+        )
         // Add trace layer for debugging
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .with_state(app_state)
