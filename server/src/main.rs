@@ -9,6 +9,7 @@ mod cron;
 mod jobs;
 mod routes;
 mod state;
+mod errors;
 
 mod components {
     pub mod page;

@@ -1,7 +1,8 @@
 use axum::routing::get;
 use maud::html;
+use reqwest::StatusCode;
 
-use crate::{components::page::Page, state::AppState};
+use crate::{components::page::Page, errors::ServerResult, state::AppState};
 
 pub fn routes(app_state: AppState) -> axum::Router {
     axum::Router::new()
@@ -12,13 +13,13 @@ pub fn routes(app_state: AppState) -> axum::Router {
         .with_state(app_state)
 }
 
-async fn root_page() -> Page {
-    Page::new(
+async fn root_page() -> ServerResult<Page, StatusCode> {
+    Ok(Page::new(
         "Home".to_string(),
         Box::new(html! {
             div {
                 "Hello, world!"
             }
         }),
-    )
+    ))
 }
