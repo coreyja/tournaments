@@ -14,6 +14,27 @@
 - Create migration: `sqlx migrate add --source migrations <migration_name>`
 - Recreate DB from scratch: `cargo sqlx db drop -y && cargo sqlx db create && cargo sqlx migrate run`
 
+## SQLx Configuration
+
+SQLx uses offline query checking, which requires either a connection to the database or a query cache. When encountering SQL query errors like `set DATABASE_URL to use query macros online, or run cargo sqlx prepare to update the query cache`, use one of these solutions:
+
+1. **Update the Query Cache:**
+
+   ```
+   DATABASE_URL="postgresql://localhost:5432/tournaments" cargo sqlx prepare --workspace
+   ```
+
+   This will generate `.sqlx` files in the project root, which should be checked into version control.
+
+2. **Set DATABASE_URL Environment Variable:**
+   When running commands that use SQLx macros, ensure the DATABASE_URL is set:
+   ```
+   export DATABASE_URL="postgresql://localhost:5432/tournaments"
+   cargo build
+   ```
+
+For more information, see [SQLx documentation on offline mode](https://docs.rs/sqlx/latest/sqlx/macro.query.html#offline-mode-requires-the-offline-feature).
+
 ## Background Jobs
 
 For background work, don't use `tokio::spawn`. Instead, use the cja job system:
@@ -203,3 +224,56 @@ Remember the difference between `wrap_err` and `with_status`/`with_redirect`:
 - Typically use them together: `operation().wrap_err("context").with_status(StatusCode::BAD_REQUEST)?`
 
 8. Database queries: **Always** use the `sqlx::query!` and `sqlx::query_as!` macros instead of the non-macro versions. These macros provide compile-time SQL validation and type-checking, preventing runtime SQL errors.
+
+## Avoiding panic in Rust
+
+Never use `unwrap()` or `expect()` in production code as they can cause panics. Instead:
+
+1. Use proper error handling with the `?` operator:
+
+   ```rust
+   // GOOD
+   let value = some_fallible_operation().wrap_err("Operation failed")?;
+
+   // BAD
+   let value = some_fallible_operation().unwrap();
+   ```
+
+2. For Option types, use pattern matching or combinators:
+
+   ```rust
+   // GOOD
+   let value = match optional_value {
+       Some(v) => v,
+       None => return Err(eyre!("Value not found"))?
+   };
+
+   // Or using combinators
+   let value = optional_value.ok_or_else(|| eyre!("Value not found"))?;
+
+   // BAD
+   let value = optional_value.unwrap();
+   ```
+
+3. Use fallback values when appropriate:
+
+   ```rust
+   // GOOD - Using unwrap_or
+   let value = optional_value.unwrap_or_default();
+   let value = optional_value.unwrap_or(fallback_value);
+
+   // GOOD - Using unwrap_or_else for computed fallbacks
+   let value = optional_value.unwrap_or_else(|| compute_fallback());
+   ```
+
+4. In web handlers, return appropriate HTTP status codes instead of panicking:
+
+   ```rust
+   // GOOD
+   if !is_valid {
+       return Err(ServerError(eyre!("Invalid request"), StatusCode::BAD_REQUEST));
+   }
+
+   // BAD
+   assert!(is_valid, "Request must be valid");
+   ```

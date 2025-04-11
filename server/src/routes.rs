@@ -1,19 +1,7 @@
-use axum::{
-    extract::{FromRef, FromRequestParts, State},
-    http::{StatusCode, request::Parts},
-    response::{IntoResponse, Response},
-    routing::get,
-};
-use color_eyre::eyre::Context as _;
+use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get};
 use maud::html;
-use uuid::Uuid;
 
-use crate::{
-    components::{github_auth::User, page::Page},
-    cookies::CookieJar,
-    errors::ServerResult,
-    state::AppState,
-};
+use crate::{components::page::Page, errors::ServerResult, state::AppState};
 
 // Include route modules
 pub mod auth;
@@ -37,59 +25,9 @@ pub fn routes(app_state: AppState) -> axum::Router {
         .with_state(app_state)
 }
 
-/// Extractor for optionally getting the current user
-///
-/// Unlike CurrentUser, this won't return an error if the user is not logged in.
-/// Instead, it will return Option<User> which will be None if not logged in.
-pub struct OptionalUser(pub Option<User>);
-
-#[axum::async_trait]
-impl<S> FromRequestParts<S> for OptionalUser
-where
-    AppState: FromRef<S>,
-    S: Send + Sync,
-{
-    type Rejection = Response;
-
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let app_state = AppState::from_ref(state);
-
-        // Get cookie jar - return None if cookie jar can't be extracted
-        let cookie_jar_result = CookieJar::from_request_parts(parts, &app_state).await;
-        let cookie_jar = match cookie_jar_result {
-            Ok(jar) => jar,
-            Err(_) => return Ok(OptionalUser(None)),
-        };
-
-        // Try to get user_id from cookie
-        let user_id_option = cookie_jar
-            .get(github_auth::USER_COOKIE_NAME)
-            .and_then(|cookie| cookie.value().parse::<Uuid>().ok());
-
-        // If no user_id in cookie, return None
-        let user_id = match user_id_option {
-            Some(id) => id,
-            None => return Ok(OptionalUser(None)),
-        };
-
-        // Get user from database
-        let user_result = crate::components::github_auth::get_user_by_id(&app_state.db, user_id)
-            .await
-            .wrap_err("Failed to fetch user from database");
-
-        // Return None if there was any error getting the user or if user doesn't exist
-        let user = match user_result {
-            Ok(Some(user)) => user,
-            Ok(None) | Err(_) => return Ok(OptionalUser(None)),
-        };
-
-        Ok(OptionalUser(Some(user)))
-    }
-}
-
 async fn root_page(
     _: State<AppState>,
-    OptionalUser(user): OptionalUser,
+    auth::OptionalUser(user): auth::OptionalUser,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     Ok(Page::new(
         "Home".to_string(),

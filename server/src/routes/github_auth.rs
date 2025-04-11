@@ -5,42 +5,41 @@ use axum::{
 };
 use color_eyre::eyre::{Context as _, eyre};
 use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT};
-use time::Duration;
-use tower_cookies::Cookie;
-use tower_cookies::cookie::SameSite;
 
 use crate::{
-    components::github_auth::{
-        GitHubAuthParams, GitHubTokenResponse, GitHubUser, create_or_update_user,
-    },
-    cookies::CookieJar,
     errors::{ServerError, ServerResult},
+    github::auth::{GitHubAuthParams, GitHubTokenResponse, GitHubUser},
+    models::session::{
+        associate_user_with_session, clear_github_oauth_state, disassociate_user_from_session,
+        set_github_oauth_state,
+    },
+    models::user::create_or_update_user,
     state::AppState,
 };
+
+use super::auth::CurrentSession;
 
 // Constants
 const GITHUB_OAUTH_URL: &str = "https://github.com/login/oauth/authorize";
 const GITHUB_TOKEN_URL: &str = "https://github.com/login/oauth/access_token";
 const GITHUB_API_URL: &str = "https://api.github.com";
-pub const USER_COOKIE_NAME: &str = "user_id";
-const GITHUB_OAUTH_STATE_COOKIE: &str = "github_oauth_state";
-const COOKIE_MAX_AGE_SECONDS: i64 = 60 * 60 * 24 * 30; // 30 days
 
 // Route handler for initiating GitHub OAuth flow
 pub async fn github_auth(
     State(state): State<AppState>,
-    cookie_jar: CookieJar,
+    current_session: CurrentSession,
 ) -> ServerResult<Redirect, StatusCode> {
     // Generate a random state for CSRF protection
     let oauth_state = format!("{}", uuid::Uuid::new_v4());
 
-    // Store the state in a cookie for verification
-    let mut cookie = Cookie::new(GITHUB_OAUTH_STATE_COOKIE, oauth_state.clone());
-    cookie.set_same_site(SameSite::Strict);
-    cookie.set_http_only(true);
-    cookie.set_secure(true);
-    cookie.set_max_age(Duration::minutes(10));
-    cookie_jar.add(cookie);
+    // Store the state in the session
+    set_github_oauth_state(
+        &state.db,
+        current_session.session.session_id,
+        oauth_state.clone(),
+    )
+    .await
+    .wrap_err("Failed to store OAuth state in session")?;
 
     // Build OAuth URL using the AppState's github_oauth_config
     let auth_url = format!(
@@ -59,29 +58,32 @@ pub async fn github_auth(
 pub async fn github_auth_callback(
     State(state): State<AppState>,
     Query(params): Query<GitHubAuthParams>,
-    cookie_jar: CookieJar,
+    current_session: CurrentSession,
 ) -> ServerResult<Redirect, StatusCode> {
     // Verify the state parameter to prevent CSRF attacks
-    let state_cookie = cookie_jar.get(GITHUB_OAUTH_STATE_COOKIE);
-    let cookie_state = match state_cookie {
-        Some(cookie) => cookie.value().to_string(),
+    let session_oauth_state = current_session.session.github_oauth_state;
+
+    let session_state = match session_oauth_state {
+        Some(state) => state,
         None => {
             return Err(ServerError(
-                eyre!("GitHub OAuth state cookie not found"),
+                eyre!("GitHub OAuth state not found in session"),
                 StatusCode::BAD_REQUEST,
             ));
         }
     };
 
-    if params.state != cookie_state {
+    if params.state != session_state {
         return Err(ServerError(
             eyre!("GitHub OAuth state mismatch"),
             StatusCode::BAD_REQUEST,
         ));
     }
 
-    // Remove the state cookie since it's no longer needed
-    cookie_jar.remove(Cookie::build(GITHUB_OAUTH_STATE_COOKIE).build());
+    // Clear the state from the session since it's no longer needed
+    clear_github_oauth_state(&state.db, current_session.session.session_id)
+        .await
+        .wrap_err("Failed to clear OAuth state from session")?;
 
     // Exchange code for access token
     let client = reqwest::Client::new();
@@ -129,22 +131,24 @@ pub async fn github_auth_callback(
         .await
         .wrap_err("Failed to create or update user")?;
 
-    // Set user_id cookie
-    let mut cookie = Cookie::new(USER_COOKIE_NAME, user.user_id.to_string());
-    cookie.set_max_age(Duration::seconds(COOKIE_MAX_AGE_SECONDS));
-    cookie.set_http_only(true);
-    cookie.set_secure(true);
-    cookie.set_same_site(SameSite::Lax);
-    cookie_jar.add(cookie);
+    // Associate the user with the current session
+    associate_user_with_session(&state.db, current_session.session.session_id, user.user_id)
+        .await
+        .wrap_err("Failed to associate user with session")?;
 
     // Redirect to home page after successful login
     Ok(Redirect::to("/"))
 }
 
 // Route handler for logging out
-pub async fn logout(cookie_jar: CookieJar) -> impl IntoResponse {
-    // Remove the user_id cookie
-    cookie_jar.remove(Cookie::build(USER_COOKIE_NAME).build());
+pub async fn logout(
+    State(state): State<AppState>,
+    current_session: CurrentSession,
+) -> impl IntoResponse {
+    // Disassociate user from the session (if logged in)
+    if current_session.user.is_some() {
+        let _ = disassociate_user_from_session(&state.db, current_session.session.session_id).await;
+    }
 
     Redirect::to("/")
 }

@@ -73,5 +73,15 @@ The application will be available at http://localhost:3000
 - Fix auto-correctable lints: `cargo clippy --fix`
 - Format: `cargo fmt`
 - Test: `cargo test`
-- Run database migrations: `cargo sqlx migrate run`
-- Create migration: `cargo sqlx migrate add --source migrations <migration_name>`
+
+### Database Commands
+
+- Create database: `cargo sqlx db create`
+- Drop database: `cargo sqlx db drop`
+- Run all migrations: `cargo sqlx migrate run`
+- Revert latest migration: `cargo sqlx mig revert`
+- Create new migration: `cargo sqlx migrate add --source migrations <migration_name>`
+- Recreate DB from scratch: `cargo sqlx db drop -y && cargo sqlx db create && cargo sqlx migrate run`
+- Update query cache: `DATABASE_URL="postgresql://localhost:5432/tournaments" cargo sqlx prepare --workspace`
+
+Note: Always ensure the DATABASE_URL environment variable is set when working with SQLx commands, especially for migration reversion: `DATABASE_URL="postgresql://localhost:5432/tournaments" cargo sqlx mig revert`

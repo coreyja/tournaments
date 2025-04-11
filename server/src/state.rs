@@ -1,7 +1,7 @@
 use color_eyre::eyre::{Context as _, eyre};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use crate::components::github_auth::GitHubOAuthConfig;
+use crate::github::auth::GitHubOAuthConfig;
 
 #[derive(Clone)]
 pub struct AppState {

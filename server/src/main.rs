@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use cja::{
     server::run_server,
     setup::{setup_sentry, setup_tracing},
@@ -5,15 +7,17 @@ use cja::{
 use state::AppState;
 use tracing::info;
 
+mod cookies;
 mod cron;
 mod errors;
+mod github;
 mod jobs;
+mod models;
 mod routes;
 mod state;
-mod cookies;
 
+/// Frontend UI components only - do not place backend logic here
 mod components {
-    pub mod github_auth;
     pub mod page;
 }
 
