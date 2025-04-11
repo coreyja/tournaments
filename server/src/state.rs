@@ -1,10 +1,13 @@
 use color_eyre::eyre::{Context as _, eyre};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
+use crate::components::github_auth::GitHubOAuthConfig;
+
 #[derive(Clone)]
 pub struct AppState {
     pub db: sqlx::Pool<sqlx::Postgres>,
     pub cookie_key: cja::server::cookies::CookieKey,
+    pub github_oauth_config: GitHubOAuthConfig,
 }
 
 impl AppState {
@@ -49,9 +52,14 @@ impl AppState {
 
         let cookie_key = cja::server::cookies::CookieKey::from_env_or_generate()?;
 
+        // Initialize GitHub OAuth config - now required
+        let github_oauth_config =
+            GitHubOAuthConfig::from_env().wrap_err("GitHub OAuth configuration is required")?;
+
         Ok(Self {
             db: pool,
             cookie_key,
+            github_oauth_config,
         })
     }
 }

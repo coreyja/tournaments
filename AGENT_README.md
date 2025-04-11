@@ -158,6 +158,19 @@ async fn profile_handler(
 .with_redirect(Redirect::to("/error-page"))?
 ```
 
+7. Don't use `.with_status(StatusCode::INTERNAL_SERVER_ERROR)` since internal server error (500) is already the default error status:
+
+```rust
+// GOOD - Let 500 be the default error response
+.wrap_err("Failed to connect to service")?
+
+// AVOID - Redundant status code specification
+.wrap_err("Failed to connect to service")
+.with_status(StatusCode::INTERNAL_SERVER_ERROR)?
+```
+
+Only specify error status codes that differ from the default 500, such as 400, 401, 403, 404, etc.
+
 Important: Always import the necessary types and traits:
 
 ```rust
@@ -189,4 +202,4 @@ Remember the difference between `wrap_err` and `with_status`/`with_redirect`:
 - `with_status`/`with_redirect` converts the error into an appropriate HTTP response
 - Typically use them together: `operation().wrap_err("context").with_status(StatusCode::BAD_REQUEST)?`
 
-7. Database queries: **Always** use the `sqlx::query!` and `sqlx::query_as!` macros instead of the non-macro versions. These macros provide compile-time SQL validation and type-checking, preventing runtime SQL errors.
+8. Database queries: **Always** use the `sqlx::query!` and `sqlx::query_as!` macros instead of the non-macro versions. These macros provide compile-time SQL validation and type-checking, preventing runtime SQL errors.

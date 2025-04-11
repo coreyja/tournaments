@@ -6,12 +6,14 @@ use state::AppState;
 use tracing::info;
 
 mod cron;
+mod errors;
 mod jobs;
 mod routes;
 mod state;
-mod errors;
+mod cookies;
 
 mod components {
+    pub mod github_auth;
     pub mod page;
 }
 
