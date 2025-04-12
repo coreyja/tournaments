@@ -4,13 +4,18 @@ use axum::{
     http::{HeaderValue, header::SET_COOKIE, request::Parts},
     response::{IntoResponse, Redirect, Response},
 };
-use color_eyre::eyre::eyre;
+use color_eyre::eyre::{Context as _, eyre};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     cookies::CookieJar,
     errors::{ServerError, ServerResult},
+    models::session::{
+        self, FLASH_TYPE_ERROR, FLASH_TYPE_INFO, FLASH_TYPE_PRIMARY, FLASH_TYPE_SUCCESS,
+        FLASH_TYPE_WARNING, SESSION_COOKIE_NAME,
+    },
+    routes::auth::CurrentSession,
     state::AppState,
 };
 
@@ -63,19 +68,15 @@ impl FlashType {
     }
 }
 
-/// Extractor for flash messages
+/// Flash message extractor for web requests
 ///
-/// This extractor retrieves the flash message from the cookies
-/// and provides methods to create a `Page` with the flash message.
-/// It also clears the cookie after reading the flash message.
+/// This extractor retrieves the flash message from the session
+/// and clears it after reading to ensure it's only shown once.
 #[derive(Debug, Clone)]
 pub struct Flash {
     pub message: Option<String>,
-    pub flash_type: Option<FlashType>,
+    pub flash_type: Option<String>,
 }
-
-// Type alias for Flash to be used in the routes
-pub type FlashData = Flash;
 
 impl Flash {
     /// Get the flash message if it exists
@@ -85,32 +86,14 @@ impl Flash {
 
     /// Get the CSS class based on flash type
     pub fn class(&self) -> &'static str {
-        match self.flash_type {
-            Some(flash_type) => flash_type.to_class(),
+        match self.flash_type.as_deref() {
+            Some(FLASH_TYPE_SUCCESS) => "alert alert-success",
+            Some(FLASH_TYPE_ERROR) => "alert alert-danger",
+            Some(FLASH_TYPE_INFO) => "alert alert-info",
+            Some(FLASH_TYPE_WARNING) => "alert alert-warning",
+            Some(FLASH_TYPE_PRIMARY) | Some(_) => "alert alert-primary",
             None => "",
         }
-    }
-
-    /// Add a flash message with type to the cookies
-    pub fn add(cookie_jar: &CookieJar, message: String, flash_type: FlashType) {
-        // Set message cookie
-        let mut message_cookie = tower_cookies::Cookie::new(FLASH_COOKIE_NAME, message);
-        message_cookie.set_http_only(true);
-        message_cookie.set_secure(true);
-        message_cookie.set_same_site(tower_cookies::cookie::SameSite::Lax);
-        message_cookie.set_max_age(time::Duration::seconds(60));
-        message_cookie.set_path("/");
-        cookie_jar.add(message_cookie);
-
-        // Set type cookie
-        let mut type_cookie =
-            tower_cookies::Cookie::new(FLASH_TYPE_COOKIE_NAME, flash_type.to_str());
-        type_cookie.set_http_only(true);
-        type_cookie.set_secure(true);
-        type_cookie.set_same_site(tower_cookies::cookie::SameSite::Lax);
-        type_cookie.set_max_age(time::Duration::seconds(60));
-        type_cookie.set_path("/");
-        cookie_jar.add(type_cookie);
     }
 }
 
@@ -122,25 +105,102 @@ impl FromRequestParts<AppState> for Flash {
         parts: &mut Parts,
         app_state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let cookie_jar = CookieJar::from_request_parts(parts, app_state).await?;
+        let session_result = CurrentSession::from_request_parts(parts, app_state).await;
 
-        // Get message from cookie
-        let flash_cookie = cookie_jar.get(FLASH_COOKIE_NAME);
-        let message = flash_cookie.map(|cookie| cookie.value().to_string());
+        match session_result {
+            Ok(CurrentSession { session, .. }) => {
+                // Extract the flash data
+                let flash = Self {
+                    message: session.flash_message.clone(),
+                    flash_type: session.flash_type.clone(),
+                };
 
-        // Get type from cookie
-        let flash_type_cookie = cookie_jar.get(FLASH_TYPE_COOKIE_NAME);
-        let flash_type = flash_type_cookie.map(|cookie| FlashType::from_str(cookie.value()));
+                // If there was a flash message, clear it so it's only shown once
+                if flash.message.is_some() {
+                    match session::clear_flash_message(&app_state.db, session.session_id)
+                        .await
+                        .wrap_err("Failed to clear flash message")
+                    {
+                        Ok(_) => {}
+                        Err(err) => {
+                            return Err(
+                                ServerError(err, StatusCode::INTERNAL_SERVER_ERROR).into_response()
+                            );
+                        }
+                    }
+                }
 
-        // Remove both cookies
-        cookie_jar.remove_by_name(FLASH_COOKIE_NAME);
-        cookie_jar.remove_by_name(FLASH_TYPE_COOKIE_NAME);
-
-        Ok(Self {
-            message,
-            flash_type,
-        })
+                Ok(flash)
+            }
+            _ => {
+                // Session not found or error, return empty flash
+                Ok(Self {
+                    message: None,
+                    flash_type: None,
+                })
+            }
+        }
     }
+}
+
+/// Helper for setting a flash message in the session
+///
+/// This function will set a flash message in the session
+/// and should be called before redirecting the user.
+pub async fn set_flash_message(
+    db_pool: &sqlx::PgPool,
+    session_id: uuid::Uuid,
+    message: String,
+    flash_type: &str,
+) -> cja::Result<()> {
+    session::set_flash_message(db_pool, session_id, message, flash_type)
+        .await
+        .map(|_| ())
+}
+
+/// Set a success flash message
+pub async fn set_success_flash(
+    db_pool: &sqlx::PgPool,
+    session_id: uuid::Uuid,
+    message: String,
+) -> cja::Result<()> {
+    set_flash_message(db_pool, session_id, message, FLASH_TYPE_SUCCESS).await
+}
+
+/// Set an error flash message
+pub async fn set_error_flash(
+    db_pool: &sqlx::PgPool,
+    session_id: uuid::Uuid,
+    message: String,
+) -> cja::Result<()> {
+    set_flash_message(db_pool, session_id, message, FLASH_TYPE_ERROR).await
+}
+
+/// Set an info flash message
+pub async fn set_info_flash(
+    db_pool: &sqlx::PgPool,
+    session_id: uuid::Uuid,
+    message: String,
+) -> cja::Result<()> {
+    set_flash_message(db_pool, session_id, message, FLASH_TYPE_INFO).await
+}
+
+/// Set a warning flash message
+pub async fn set_warning_flash(
+    db_pool: &sqlx::PgPool,
+    session_id: uuid::Uuid,
+    message: String,
+) -> cja::Result<()> {
+    set_flash_message(db_pool, session_id, message, FLASH_TYPE_WARNING).await
+}
+
+/// Set a primary flash message
+pub async fn set_primary_flash(
+    db_pool: &sqlx::PgPool,
+    session_id: uuid::Uuid,
+    message: String,
+) -> cja::Result<()> {
+    set_flash_message(db_pool, session_id, message, FLASH_TYPE_PRIMARY).await
 }
 
 #[derive(Debug)]

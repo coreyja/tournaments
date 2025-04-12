@@ -141,7 +141,9 @@ pub async fn github_auth_callback(
         .wrap_err("Failed to associate user with session")?;
 
     // Redirect to home page with success message
-    flasher.add_flash("Successfully logged in with GitHub!");
+    flasher
+        .add_flash("Successfully logged in with GitHub!")
+        .await?;
     Ok(Redirect::to("/"))
 }
 
@@ -156,6 +158,10 @@ pub async fn logout(
         let _ = disassociate_user_from_session(&state.db, current_session.session.session_id).await;
     }
 
-    flasher.add_flash("You have been logged out");
+    // Add flash message, but don't fail the request if it doesn't work
+    if let Err(err) = flasher.add_flash("You have been logged out").await {
+        tracing::warn!(?err, "Failed to set logout flash message");
+    }
+
     Redirect::to("/")
 }

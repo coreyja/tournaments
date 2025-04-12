@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO sessions (github_oauth_state)\n        VALUES (NULL)\n        RETURNING \n            session_id,\n            user_id,\n            github_oauth_state,\n            created_at,\n            updated_at,\n            expires_at\n        ",
+  "query": "\n        UPDATE sessions\n        SET \n            github_oauth_state = $2\n        WHERE session_id = $1\n        RETURNING \n            session_id,\n            user_id,\n            github_oauth_state,\n            flash_message,\n            flash_type,\n            created_at,\n            updated_at,\n            expires_at\n        ",
   "describe": {
     "columns": [
       {
@@ -20,25 +20,40 @@
       },
       {
         "ordinal": 3,
+        "name": "flash_message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "flash_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 4,
+        "ordinal": 6,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 7,
         "name": "expires_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
     },
     "nullable": [
       false,
+      true,
+      true,
       true,
       true,
       false,
@@ -46,5 +61,5 @@
       false
     ]
   },
-  "hash": "838fd28b7d4efc95a1e44be3d270a19bafb7eb4eeb5416e3070ca41843f87fb1"
+  "hash": "a8aba1fc8feb5875e3da2d4aeb5ee3aaa7313454761aba44d6dd06c289a9cb62"
 }

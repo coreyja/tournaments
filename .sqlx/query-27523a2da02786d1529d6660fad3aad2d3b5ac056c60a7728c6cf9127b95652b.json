@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            s.session_id,\n            s.user_id,\n            s.github_oauth_state,\n            s.created_at,\n            s.updated_at,\n            s.expires_at,\n            u.user_id as \"user_user_id?\",\n            u.external_github_id as \"external_github_id?\",\n            u.github_login as \"github_login?\",\n            u.github_avatar_url as \"github_avatar_url?\",\n            u.github_name as \"github_name?\",\n            u.github_email as \"github_email?\",\n            u.created_at as \"user_created_at?\",\n            u.updated_at as \"user_updated_at?\"\n        FROM sessions s\n        LEFT JOIN users u ON s.user_id = u.user_id\n        WHERE \n            s.session_id = $1\n            AND s.expires_at > NOW()\n        ",
+  "query": "\n        SELECT\n            s.session_id,\n            s.user_id,\n            s.github_oauth_state,\n            s.flash_message,\n            s.flash_type,\n            s.created_at,\n            s.updated_at,\n            s.expires_at,\n            u.user_id as \"user_user_id?\",\n            u.external_github_id as \"external_github_id?\",\n            u.github_login as \"github_login?\",\n            u.github_avatar_url as \"github_avatar_url?\",\n            u.github_name as \"github_name?\",\n            u.github_email as \"github_email?\",\n            u.created_at as \"user_created_at?\",\n            u.updated_at as \"user_updated_at?\"\n        FROM sessions s\n        LEFT JOIN users u ON s.user_id = u.user_id\n        WHERE \n            s.session_id = $1\n            AND s.expires_at > NOW()\n        ",
   "describe": {
     "columns": [
       {
@@ -20,56 +20,66 @@
       },
       {
         "ordinal": 3,
+        "name": "flash_message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "flash_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 4,
+        "ordinal": 6,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 7,
         "name": "expires_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 6,
+        "ordinal": 8,
         "name": "user_user_id?",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 7,
+        "ordinal": 9,
         "name": "external_github_id?",
         "type_info": "Int8"
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "github_login?",
         "type_info": "Text"
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "github_avatar_url?",
         "type_info": "Text"
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "github_name?",
         "type_info": "Text"
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "github_email?",
         "type_info": "Text"
       },
       {
-        "ordinal": 12,
+        "ordinal": 14,
         "name": "user_created_at?",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 15,
         "name": "user_updated_at?",
         "type_info": "Timestamptz"
       }
@@ -81,6 +91,8 @@
     },
     "nullable": [
       false,
+      true,
+      true,
       true,
       true,
       false,
@@ -96,5 +108,5 @@
       false
     ]
   },
-  "hash": "621d4cfcf3571db1a51db840e1b1d755a8da95815801251efa946a286aae9285"
+  "hash": "27523a2da02786d1529d6660fad3aad2d3b5ac056c60a7728c6cf9127b95652b"
 }

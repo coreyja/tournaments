@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            session_id,\n            user_id,\n            github_oauth_state,\n            created_at,\n            updated_at,\n            expires_at\n        FROM sessions\n        WHERE \n            session_id = $1\n            AND expires_at > NOW()\n        ",
+  "query": "\n        UPDATE sessions\n        SET \n            user_id = NULL,\n            github_oauth_state = NULL,\n            expires_at = NOW() + INTERVAL '1 hour'\n        WHERE session_id = $1\n        RETURNING \n            session_id,\n            user_id,\n            github_oauth_state,\n            flash_message,\n            flash_type,\n            created_at,\n            updated_at,\n            expires_at\n        ",
   "describe": {
     "columns": [
       {
@@ -20,16 +20,26 @@
       },
       {
         "ordinal": 3,
+        "name": "flash_message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "flash_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 4,
+        "ordinal": 6,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 7,
         "name": "expires_at",
         "type_info": "Timestamptz"
       }
@@ -43,10 +53,12 @@
       false,
       true,
       true,
+      true,
+      true,
       false,
       false,
       false
     ]
   },
-  "hash": "3fa51ad84bac58714ff6cc207fe38794098d959a94c80eb043b3875685f0de0c"
+  "hash": "359abc4e73cf5104fefbc69cf7c6ea9c818ef79f15a0afe114ffd1c320c6423b"
 }

@@ -11,6 +11,8 @@ pub struct Session {
     pub session_id: Uuid,
     pub user_id: Option<Uuid>,
     pub github_oauth_state: Option<String>,
+    pub flash_message: Option<String>,
+    pub flash_type: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
     pub expires_at: chrono::DateTime<chrono::Utc>,
@@ -21,6 +23,27 @@ pub const SESSION_COOKIE_NAME: &str = "tournaments_session_id";
 // Default session expiration in seconds (30 days)
 pub const SESSION_EXPIRATION_SECONDS: i64 = 60 * 60 * 24 * 30;
 
+// Flash message types as constants
+pub const FLASH_TYPE_SUCCESS: &str = "success";
+pub const FLASH_TYPE_ERROR: &str = "error";
+pub const FLASH_TYPE_INFO: &str = "info";
+pub const FLASH_TYPE_WARNING: &str = "warning";
+pub const FLASH_TYPE_PRIMARY: &str = "primary";
+
+impl Session {
+    /// Get the CSS class for the flash message
+    pub fn flash_class(&self) -> &'static str {
+        match self.flash_type.as_deref() {
+            Some(FLASH_TYPE_SUCCESS) => "alert alert-success",
+            Some(FLASH_TYPE_ERROR) => "alert alert-danger",
+            Some(FLASH_TYPE_INFO) => "alert alert-info",
+            Some(FLASH_TYPE_WARNING) => "alert alert-warning",
+            Some(FLASH_TYPE_PRIMARY) | Some(_) => "alert alert-primary",
+            None => "",
+        }
+    }
+}
+
 /// Create a new session
 ///
 /// Creates a new anonymous session with no user attached.
@@ -28,12 +51,14 @@ pub async fn create_session(pool: &PgPool) -> cja::Result<Session> {
     let session = sqlx::query_as!(
         Session,
         r#"
-        INSERT INTO sessions (github_oauth_state)
-        VALUES (NULL)
+        INSERT INTO sessions (github_oauth_state, flash_message, flash_type)
+        VALUES (NULL, NULL, NULL)
         RETURNING 
             session_id,
             user_id,
             github_oauth_state,
+            flash_message,
+            flash_type,
             created_at,
             updated_at,
             expires_at
@@ -59,6 +84,8 @@ pub async fn get_active_session_by_id(
             session_id,
             user_id,
             github_oauth_state,
+            flash_message,
+            flash_type,
             created_at,
             updated_at,
             expires_at
@@ -76,6 +103,71 @@ pub async fn get_active_session_by_id(
     Ok(session)
 }
 
+/// Set a flash message on a session
+pub async fn set_flash_message(
+    pool: &PgPool,
+    session_id: Uuid,
+    message: String,
+    flash_type: &str,
+) -> cja::Result<Session> {
+    let session = sqlx::query_as!(
+        Session,
+        r#"
+        UPDATE sessions
+        SET 
+            flash_message = $2,
+            flash_type = $3
+        WHERE session_id = $1
+        RETURNING 
+            session_id,
+            user_id,
+            github_oauth_state,
+            flash_message,
+            flash_type,
+            created_at,
+            updated_at,
+            expires_at
+        "#,
+        session_id,
+        message,
+        flash_type
+    )
+    .fetch_one(pool)
+    .await
+    .wrap_err("Failed to set flash message for session")?;
+
+    Ok(session)
+}
+
+/// Clear a flash message from a session
+pub async fn clear_flash_message(pool: &PgPool, session_id: Uuid) -> cja::Result<Session> {
+    let session = sqlx::query_as!(
+        Session,
+        r#"
+        UPDATE sessions
+        SET 
+            flash_message = NULL,
+            flash_type = NULL
+        WHERE session_id = $1
+        RETURNING 
+            session_id,
+            user_id,
+            github_oauth_state,
+            flash_message,
+            flash_type,
+            created_at,
+            updated_at,
+            expires_at
+        "#,
+        session_id
+    )
+    .fetch_one(pool)
+    .await
+    .wrap_err("Failed to clear flash message for session")?;
+
+    Ok(session)
+}
+
 /// Get a session with the user data
 pub async fn get_session_with_user(
     pool: &PgPool,
@@ -87,6 +179,8 @@ pub async fn get_session_with_user(
             s.session_id,
             s.user_id,
             s.github_oauth_state,
+            s.flash_message,
+            s.flash_type,
             s.created_at,
             s.updated_at,
             s.expires_at,
@@ -116,6 +210,8 @@ pub async fn get_session_with_user(
                 session_id: row.session_id,
                 user_id: row.user_id,
                 github_oauth_state: row.github_oauth_state,
+                flash_message: row.flash_message,
+                flash_type: row.flash_type,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
                 expires_at: row.expires_at,
@@ -173,6 +269,8 @@ pub async fn set_github_oauth_state(
             session_id,
             user_id,
             github_oauth_state,
+            flash_message,
+            flash_type,
             created_at,
             updated_at,
             expires_at
@@ -200,6 +298,8 @@ pub async fn clear_github_oauth_state(pool: &PgPool, session_id: Uuid) -> cja::R
             session_id,
             user_id,
             github_oauth_state,
+            flash_message,
+            flash_type,
             created_at,
             updated_at,
             expires_at
@@ -232,6 +332,8 @@ pub async fn associate_user_with_session(
             session_id,
             user_id,
             github_oauth_state,
+            flash_message,
+            flash_type,
             created_at,
             updated_at,
             expires_at
@@ -255,12 +357,17 @@ pub async fn disassociate_user_from_session(
         Session,
         r#"
         UPDATE sessions
-        SET user_id = NULL
+        SET 
+            user_id = NULL,
+            github_oauth_state = NULL,
+            expires_at = NOW() + INTERVAL '1 hour'
         WHERE session_id = $1
         RETURNING 
             session_id,
             user_id,
             github_oauth_state,
+            flash_message,
+            flash_type,
             created_at,
             updated_at,
             expires_at
@@ -274,18 +381,21 @@ pub async fn disassociate_user_from_session(
     Ok(session)
 }
 
-/// Refresh a session expiration date
+/// Refresh a session's expiration time
 pub async fn refresh_session(pool: &PgPool, session_id: Uuid) -> cja::Result<Session> {
     let session = sqlx::query_as!(
         Session,
         r#"
         UPDATE sessions
-        SET expires_at = NOW() + INTERVAL '30 days'
+        SET 
+            expires_at = GREATEST(expires_at, NOW() + INTERVAL '30 days')
         WHERE session_id = $1
         RETURNING 
             session_id,
             user_id,
             github_oauth_state,
+            flash_message,
+            flash_type,
             created_at,
             updated_at,
             expires_at
@@ -315,7 +425,7 @@ pub async fn delete_session(pool: &PgPool, session_id: Uuid) -> cja::Result<()> 
     Ok(())
 }
 
-/// Clean up expired sessions
+/// Clean expired sessions
 pub async fn clean_expired_sessions(pool: &PgPool) -> cja::Result<u64> {
     let result = sqlx::query!(
         r#"
