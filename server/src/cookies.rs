@@ -59,4 +59,10 @@ impl CookieJar {
         let private = self.cookies.private(&self.state.cookie_key);
         private.remove(cookie);
     }
+
+    /// Removes a cookie by name
+    pub fn remove_by_name(&self, name: &'static str) {
+        let private = self.cookies.private(&self.state.cookie_key);
+        private.remove(Cookie::new(name, ""));
+    }
 }

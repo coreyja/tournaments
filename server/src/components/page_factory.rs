@@ -1,13 +1,15 @@
-use axum::{async_trait, extract::FromRequestParts, http::request::Parts};
+use axum::{async_trait, extract::FromRequestParts, http::request::Parts, response::Response};
 use maud::Render;
 
-use crate::components::{flash::Flash, page::Page};
+use crate::{
+    components::{flash::Flash, page::Page},
+    state::AppState,
+};
 
 /// PageFactory extractor
 ///
 /// This extractor is responsible for creating Page instances with all necessary components
 /// like flash messages. It extracts FlashMessage and uses it when creating pages.
-#[derive(Debug, Clone)]
 pub struct PageFactory {
     flash: Flash,
 }
@@ -24,15 +26,14 @@ impl PageFactory {
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for PageFactory
-where
-    S: Send + Sync,
-{
-    type Rejection = std::convert::Infallible;
+impl FromRequestParts<AppState> for PageFactory {
+    type Rejection = Response;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         let flash = Flash::from_request_parts(parts, state).await?;
-
         Ok(Self { flash })
     }
 }

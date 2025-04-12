@@ -1,6 +1,6 @@
 use axum::{
     async_trait,
-    extract::{FromRef, FromRequestParts},
+    extract::FromRequestParts,
     http::{StatusCode, request::Parts},
     response::{IntoResponse as _, Response},
 };
@@ -30,18 +30,14 @@ pub struct CurrentSession {
 }
 /// Extract the current session with optional user
 #[axum::async_trait]
-impl<S> FromRequestParts<S> for CurrentSession
-where
-    AppState: FromRef<S>,
-    S: Send + Sync,
-{
+impl FromRequestParts<AppState> for CurrentSession {
     type Rejection = Response;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let app_state = AppState::from_ref(state);
-
-        // Get cookie jar
-        let cookie_jar = match CookieJar::from_request_parts(parts, &app_state).await {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        app_state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let cookie_jar = match CookieJar::from_request_parts(parts, app_state).await {
             Ok(jar) => jar,
             Err(_) => {
                 tracing::error!("Cookie jar extraction failed");
