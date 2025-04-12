@@ -7,13 +7,16 @@ use color_eyre::eyre::{Context as _, eyre};
 use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT};
 
 use crate::{
+    components::flash::WithFlash as _,
     errors::{ServerError, ServerResult},
     github::auth::{GitHubAuthParams, GitHubTokenResponse, GitHubUser},
-    models::session::{
-        associate_user_with_session, clear_github_oauth_state, disassociate_user_from_session,
-        set_github_oauth_state,
+    models::{
+        session::{
+            associate_user_with_session, clear_github_oauth_state, disassociate_user_from_session,
+            set_github_oauth_state,
+        },
+        user::create_or_update_user,
     },
-    models::user::create_or_update_user,
     state::AppState,
 };
 
@@ -59,7 +62,7 @@ pub async fn github_auth_callback(
     State(state): State<AppState>,
     Query(params): Query<GitHubAuthParams>,
     current_session: CurrentSession,
-) -> ServerResult<Redirect, StatusCode> {
+) -> ServerResult<impl IntoResponse, StatusCode> {
     // Verify the state parameter to prevent CSRF attacks
     let session_oauth_state = current_session.session.github_oauth_state;
 
@@ -136,8 +139,8 @@ pub async fn github_auth_callback(
         .await
         .wrap_err("Failed to associate user with session")?;
 
-    // Redirect to home page after successful login
-    Ok(Redirect::to("/"))
+    // Redirect to home page with success message
+    Ok(Redirect::to("/").with_flash("Successfully logged in with GitHub!"))
 }
 
 // Route handler for logging out
@@ -150,5 +153,5 @@ pub async fn logout(
         let _ = disassociate_user_from_session(&state.db, current_session.session.session_id).await;
     }
 
-    Redirect::to("/")
+    Redirect::to("/").with_flash("You have been logged out")
 }

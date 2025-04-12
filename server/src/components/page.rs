@@ -3,11 +3,16 @@ use maud::{Markup, Render, html};
 pub struct Page {
     pub title: String,
     pub content: Box<dyn Render>,
+    pub flash: Option<String>,
 }
 
 impl Page {
-    pub fn new(title: String, content: Box<dyn Render>) -> Self {
-        Self { title, content }
+    pub fn new(title: String, content: Box<dyn Render>, flash: Option<String>) -> Self {
+        Self {
+            title,
+            content,
+            flash,
+        }
     }
 }
 
@@ -20,7 +25,15 @@ impl Render for Page {
                 script src="/static/viewTransition.js" {}
             }
 
-            (self.content.render())
+            body {
+                @if let Some(flash_message) = &self.flash {
+                    div class="flash-message" {
+                        (flash_message)
+                    }
+                }
+
+                (self.content.render())
+            }
         }
     }
 }

@@ -19,7 +19,9 @@ mod static_assets;
 
 /// Frontend UI components only - do not place backend logic here
 mod components {
+    pub mod flash;
     pub mod page;
+    pub mod page_factory;
 }
 
 fn main() -> color_eyre::Result<()> {

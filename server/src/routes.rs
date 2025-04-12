@@ -1,7 +1,7 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get};
 use maud::html;
 
-use crate::{components::page::Page, errors::ServerResult, state::AppState};
+use crate::{components::page_factory::PageFactory, errors::ServerResult, state::AppState};
 
 // Include route modules
 pub mod auth;
@@ -32,8 +32,9 @@ pub fn routes(app_state: AppState) -> axum::Router {
 async fn root_page(
     _: State<AppState>,
     auth::OptionalUser(user): auth::OptionalUser,
+    page_factory: PageFactory,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
-    Ok(Page::new(
+    Ok(page_factory.create_page(
         "Home".to_string(),
         Box::new(html! {
             div {
@@ -65,8 +66,9 @@ async fn root_page(
 /// Profile page that requires authentication
 async fn profile_page(
     auth::CurrentUser(user): auth::CurrentUser,
+    page_factory: PageFactory,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
-    Ok(Page::new(
+    Ok(page_factory.create_page(
         "My Profile".to_string(),
         Box::new(html! {
             div {
