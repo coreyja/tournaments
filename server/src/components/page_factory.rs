@@ -23,6 +23,22 @@ impl PageFactory {
             flash: self.flash.message,
         }
     }
+
+    /// Create a new Page with an explicit flash message
+    /// This is useful when you want to use the FlashData extractor but also
+    /// add it to the page later
+    pub fn create_page_with_flash(
+        self,
+        title: String,
+        content: Box<dyn Render>,
+        flash: Flash,
+    ) -> Page {
+        Page {
+            title,
+            content,
+            flash: flash.message,
+        }
+    }
 }
 
 #[async_trait]

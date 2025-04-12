@@ -44,6 +44,16 @@ impl<T> WithStatus<T> for Result<T, cja::color_eyre::Report> {
     }
 }
 
+// Implementation of WithStatus for Result<T, String>
+impl<T> WithStatus<T> for Result<T, String> {
+    fn with_status(self, status: StatusCode) -> Result<T, ServerError<StatusCode>> {
+        match self {
+            Ok(val) => Ok(val),
+            Err(err) => Err(ServerError(cja::color_eyre::eyre::eyre!(err), status)),
+        }
+    }
+}
+
 pub(crate) trait WithRedirect<T> {
     fn with_redirect(self, redirect: Redirect) -> Result<T, ServerError<Redirect>>;
 }

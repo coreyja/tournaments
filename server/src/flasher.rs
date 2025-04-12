@@ -1,6 +1,10 @@
 use axum::{extract::FromRequestParts, http::request::Parts, response::Response};
 
-use crate::{components::flash::Flash, cookies::CookieJar, state::AppState};
+use crate::{
+    components::flash::{Flash, FlashType},
+    cookies::CookieJar,
+    state::AppState,
+};
 
 pub struct Flasher {
     cookie_jar: CookieJar,
@@ -26,7 +30,28 @@ impl FromRequestParts<AppState> for Flasher {
 }
 
 impl Flasher {
+    /// Add a flash message with default type (Primary)
     pub fn add_flash(&self, message: impl Into<String>) {
-        Flash::add(&self.cookie_jar, message.into());
+        Flash::add(&self.cookie_jar, message.into(), FlashType::Primary);
+    }
+
+    /// Add a success flash message
+    pub fn success(&self, message: impl Into<String>) {
+        Flash::add(&self.cookie_jar, message.into(), FlashType::Success);
+    }
+
+    /// Add an error flash message
+    pub fn error(&self, message: impl Into<String>) {
+        Flash::add(&self.cookie_jar, message.into(), FlashType::Error);
+    }
+
+    /// Add an info flash message
+    pub fn info(&self, message: impl Into<String>) {
+        Flash::add(&self.cookie_jar, message.into(), FlashType::Info);
+    }
+
+    /// Add a warning flash message
+    pub fn warning(&self, message: impl Into<String>) {
+        Flash::add(&self.cookie_jar, message.into(), FlashType::Warning);
     }
 }

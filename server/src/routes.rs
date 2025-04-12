@@ -5,6 +5,7 @@ use crate::{components::page_factory::PageFactory, errors::ServerResult, state::
 
 // Include route modules
 pub mod auth;
+pub mod battlesnake;
 pub mod github_auth;
 
 pub fn routes(app_state: AppState) -> axum::Router {
@@ -20,6 +21,22 @@ pub fn routes(app_state: AppState) -> axum::Router {
             get(github_auth::github_auth_callback),
         )
         .route("/auth/logout", get(github_auth::logout))
+        // Battlesnake routes
+        .route("/battlesnakes", get(battlesnake::list_battlesnakes))
+        .route("/battlesnakes/new", get(battlesnake::new_battlesnake))
+        .route(
+            "/battlesnakes",
+            axum::routing::post(battlesnake::create_battlesnake),
+        )
+        .route("/battlesnakes/:id/edit", get(battlesnake::edit_battlesnake))
+        .route(
+            "/battlesnakes/:id/update",
+            axum::routing::post(battlesnake::update_battlesnake),
+        )
+        .route(
+            "/battlesnakes/:id/delete",
+            axum::routing::post(battlesnake::delete_battlesnake),
+        )
         .route(
             "/static/*path",
             get(crate::static_assets::serve_static_file),
@@ -45,8 +62,11 @@ async fn root_page(
                         @if let Some(name) = user.github_name {
                             p { "Name: " (name) }
                         }
-                        a href="/auth/logout" { "Logout" }
-                        p { "View your " a href="/me" { "profile page" } }
+                        div class="user-actions" style="margin-top: 10px;" {
+                            a href="/me" class="btn btn-primary" { "Profile" }
+                            a href="/battlesnakes" class="btn btn-primary" { "Battlesnakes" }
+                            a href="/auth/logout" class="btn btn-secondary" { "Logout" }
+                        }
                     }
                 } @else {
                     div class="login" {
@@ -94,6 +114,12 @@ async fn profile_page(
                         p { "GitHub ID: " (user.external_github_id) }
                         p { "Account created: " (user.created_at.format("%Y-%m-%d %H:%M:%S")) }
                         p { "Last updated: " (user.updated_at.format("%Y-%m-%d %H:%M:%S")) }
+                    }
+                    
+                    div class="profile-actions" style="margin-top: 20px;" {
+                        h3 { "Your Battlesnakes" }
+                        p { "Manage your Battlesnake collection for tournaments." }
+                        a href="/battlesnakes" class="btn btn-primary" { "Manage Battlesnakes" }
                     }
                 }
 

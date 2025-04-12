@@ -1,13 +1,45 @@
 use color_eyre::eyre::{Context as _, eyre};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use crate::github::auth::GitHubOAuthConfig;
+use crate::{components::flash::FlashType, github::auth::GitHubOAuthConfig};
+
+/// App-wide Flasher utility for creating flash messages
+#[derive(Clone)]
+pub struct Flasher;
+
+impl Flasher {
+    /// Create a new success flash message
+    pub fn success(&self, message: String) -> (String, FlashType) {
+        (message, FlashType::Success)
+    }
+
+    /// Create a new error flash message
+    pub fn error(&self, message: String) -> (String, FlashType) {
+        (message, FlashType::Error)
+    }
+
+    /// Create a new info flash message
+    pub fn info(&self, message: String) -> (String, FlashType) {
+        (message, FlashType::Info)
+    }
+
+    /// Create a new warning flash message
+    pub fn warning(&self, message: String) -> (String, FlashType) {
+        (message, FlashType::Warning)
+    }
+
+    /// Create a new primary flash message
+    pub fn primary(&self, message: String) -> (String, FlashType) {
+        (message, FlashType::Primary)
+    }
+}
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: sqlx::Pool<sqlx::Postgres>,
     pub cookie_key: cja::server::cookies::CookieKey,
     pub github_oauth_config: GitHubOAuthConfig,
+    pub flasher: Flasher,
 }
 
 impl AppState {
@@ -60,6 +92,7 @@ impl AppState {
             db: pool,
             cookie_key,
             github_oauth_config,
+            flasher: Flasher,
         })
     }
 }
