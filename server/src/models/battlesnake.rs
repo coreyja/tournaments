@@ -15,14 +15,14 @@ pub struct Battlesnake {
 }
 
 // For creating a new battlesnake
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CreateBattlesnake {
     pub name: String,
     pub url: String,
 }
 
 // For updating an existing battlesnake
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UpdateBattlesnake {
     pub name: String,
     pub url: String,
@@ -91,7 +91,7 @@ pub async fn create_battlesnake(
     user_id: Uuid,
     data: CreateBattlesnake,
 ) -> cja::Result<Battlesnake> {
-    let battlesnake = sqlx::query_as!(
+    let result = sqlx::query_as!(
         Battlesnake,
         r#"
         INSERT INTO battlesnakes (
@@ -113,10 +113,27 @@ pub async fn create_battlesnake(
         data.url
     )
     .fetch_one(pool)
-    .await
-    .wrap_err("Failed to create battlesnake in database")?;
+    .await;
 
-    Ok(battlesnake)
+    match result {
+        Ok(battlesnake) => Ok(battlesnake),
+        Err(err) => {
+            // Check if this is a unique violation error
+            if let Some(db_err) = err.as_database_error() {
+                if let Some(constraint) = db_err.constraint() {
+                    if constraint == "unique_battlesnake_name_per_user" {
+                        return Err(cja::color_eyre::eyre::eyre!(
+                            "You already have a battlesnake named '{}'. Please choose a different name.",
+                            data.name
+                        ));
+                    }
+                }
+            }
+
+            // If it's not a unique constraint violation, wrap with a generic error
+            Err(err).wrap_err("Failed to create battlesnake in database")
+        }
+    }
 }
 
 // Update an existing battlesnake
@@ -126,7 +143,7 @@ pub async fn update_battlesnake(
     user_id: Uuid,
     data: UpdateBattlesnake,
 ) -> cja::Result<Battlesnake> {
-    let battlesnake = sqlx::query_as!(
+    let result = sqlx::query_as!(
         Battlesnake,
         r#"
         UPDATE battlesnakes
@@ -150,10 +167,27 @@ pub async fn update_battlesnake(
         data.url
     )
     .fetch_one(pool)
-    .await
-    .wrap_err("Failed to update battlesnake in database")?;
+    .await;
 
-    Ok(battlesnake)
+    match result {
+        Ok(battlesnake) => Ok(battlesnake),
+        Err(err) => {
+            // Check if this is a unique violation error
+            if let Some(db_err) = err.as_database_error() {
+                if let Some(constraint) = db_err.constraint() {
+                    if constraint == "unique_battlesnake_name_per_user" {
+                        return Err(cja::color_eyre::eyre::eyre!(
+                            "You already have a battlesnake named '{}'. Please choose a different name.",
+                            data.name
+                        ));
+                    }
+                }
+            }
+
+            // If it's not a unique constraint violation, wrap with a generic error
+            Err(err).wrap_err("Failed to update battlesnake in database")
+        }
+    }
 }
 
 // Delete a battlesnake

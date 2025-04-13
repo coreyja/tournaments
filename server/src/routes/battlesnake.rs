@@ -143,21 +143,44 @@ pub async fn create_battlesnake(
         .with_status(StatusCode::BAD_REQUEST)?;
 
     // Create the new battlesnake in the database
-    battlesnake::create_battlesnake(&state.db, user.user_id, create_data)
-        .await
-        .wrap_err("Failed to create battlesnake")?;
+    let battlesnake_result = battlesnake::create_battlesnake(&state.db, user.user_id, create_data.clone())
+        .await;
 
-    // Flash message for success and redirect
-    session::set_flash_message(
-        &state.db,
-        session_id,
-        "Battlesnake created successfully!".to_string(),
-        session::FLASH_TYPE_SUCCESS,
-    )
-    .await
-    .wrap_err("Failed to set flash message")?;
+    match battlesnake_result {
+        Ok(_) => {
+            // Flash message for success and redirect
+            session::set_flash_message(
+                &state.db,
+                session_id,
+                "Battlesnake created successfully!".to_string(),
+                session::FLASH_TYPE_SUCCESS,
+            )
+            .await
+            .wrap_err("Failed to set flash message")?;
 
-    Ok(Redirect::to("/battlesnakes").into_response())
+            Ok(Redirect::to("/battlesnakes").into_response())
+        },
+        Err(err) => {
+            // Check if it's a name uniqueness error
+            if err.to_string().contains("already have a battlesnake named") {
+                // Set error flash message
+                session::set_flash_message(
+                    &state.db,
+                    session_id,
+                    err.to_string(),
+                    session::FLASH_TYPE_ERROR,
+                )
+                .await
+                .wrap_err("Failed to set flash message")?;
+
+                // Redirect back to the form
+                Ok(Redirect::to("/battlesnakes/new").into_response())
+            } else {
+                // For other errors, propagate them
+                Err(err).wrap_err("Failed to create battlesnake")?
+            }
+        }
+    }
 }
 
 // Show the form to edit an existing battlesnake
@@ -241,21 +264,44 @@ pub async fn update_battlesnake(
     }
 
     // Update the battlesnake
-    battlesnake::update_battlesnake(&state.db, battlesnake_id, user.user_id, update_data)
-        .await
-        .wrap_err("Failed to update battlesnake")?;
+    let update_result = battlesnake::update_battlesnake(&state.db, battlesnake_id, user.user_id, update_data.clone())
+        .await;
+    
+    match update_result {
+        Ok(_) => {
+            // Flash message for success and redirect
+            session::set_flash_message(
+                &state.db,
+                session_id,
+                "Battlesnake updated successfully!".to_string(),
+                session::FLASH_TYPE_SUCCESS,
+            )
+            .await
+            .wrap_err("Failed to set flash message")?;
 
-    // Flash message for success and redirect
-    session::set_flash_message(
-        &state.db,
-        session_id,
-        "Battlesnake updated successfully!".to_string(),
-        session::FLASH_TYPE_SUCCESS,
-    )
-    .await
-    .wrap_err("Failed to set flash message")?;
+            Ok(Redirect::to("/battlesnakes").into_response())
+        },
+        Err(err) => {
+            // Check if it's a name uniqueness error
+            if err.to_string().contains("already have a battlesnake named") {
+                // Set error flash message
+                session::set_flash_message(
+                    &state.db,
+                    session_id,
+                    err.to_string(),
+                    session::FLASH_TYPE_ERROR,
+                )
+                .await
+                .wrap_err("Failed to set flash message")?;
 
-    Ok(Redirect::to("/battlesnakes").into_response())
+                // Redirect back to the edit form
+                Ok(Redirect::to(&format!("/battlesnakes/{}/edit", battlesnake_id)).into_response())
+            } else {
+                // For other errors, propagate them
+                Err(err).wrap_err("Failed to update battlesnake")?
+            }
+        }
+    }
 }
 
 // Handle the deletion of a battlesnake
