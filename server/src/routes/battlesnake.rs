@@ -4,6 +4,7 @@ use axum::{
     response::{IntoResponse, Redirect},
     Form,
 };
+use cja::server::cookies::CookieJar;
 use color_eyre::eyre::Context as _;
 use maud::html;
 use uuid::Uuid;
@@ -11,7 +12,6 @@ use uuid::Uuid;
 use crate::{
     components::page_factory::PageFactory,
     components::flash::Flash,
-    cookies::CookieJar,
     errors::{ServerResult, WithStatus},
     models::battlesnake::{self, CreateBattlesnake, UpdateBattlesnake},
     models::session,
@@ -133,7 +133,7 @@ pub async fn new_battlesnake(
 pub async fn create_battlesnake(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
-    cookie_jar: CookieJar,
+    cookie_jar: CookieJar<AppState>,
     Form(create_data): Form<CreateBattlesnake>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     // Get the session ID from cookie
@@ -244,7 +244,7 @@ pub async fn update_battlesnake(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(battlesnake_id): Path<Uuid>,
-    cookie_jar: CookieJar,
+    cookie_jar: CookieJar<AppState>,
     Form(update_data): Form<UpdateBattlesnake>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     // Get the session ID from cookie
@@ -309,7 +309,7 @@ pub async fn delete_battlesnake(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(battlesnake_id): Path<Uuid>,
-    cookie_jar: CookieJar,
+    cookie_jar: CookieJar<AppState>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     // Get the session ID from cookie
     let session_id = cookie_jar.get(session::SESSION_COOKIE_NAME)

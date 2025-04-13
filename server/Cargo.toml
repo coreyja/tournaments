@@ -45,10 +45,9 @@ reqwest = { version = "0.12.12", features = [
   "multipart",
 ], default-features = false }
 
-cja = { version = "0.0.0", git = "https://github.com/coreyja/coreyja.com", branch = "main" }
+cja = { version = "0.0.0", git = "https://github.com/coreyja/cja", branch = "main" }
 sqlx = "0.7.3"
 uuid = { version = "1.6.1", features = ["v4"] }
-tower-cookies = { version = "0.10.0", features = ["private", "signed"] }
 time = "0.3.9"
 futures = "0.3.30"
 chrono = { version = "0.4.23", default-features = false, features = ["serde"] }

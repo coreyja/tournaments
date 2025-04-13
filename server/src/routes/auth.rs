@@ -4,11 +4,11 @@ use axum::{
     http::{StatusCode, request::Parts},
     response::{IntoResponse as _, Response},
 };
+use cja::server::cookies::{Cookie, CookieJar};
 use color_eyre::eyre::eyre;
 use uuid::Uuid;
 
 use crate::{
-    cookies::CookieJar,
     errors::ServerError,
     models::{
         session::{
@@ -64,13 +64,11 @@ impl FromRequestParts<AppState> for CurrentSession {
                 };
 
                 // Set the session cookie
-                let mut cookie = tower_cookies::Cookie::new(
-                    SESSION_COOKIE_NAME,
-                    new_session.session_id.to_string(),
-                );
+                let mut cookie =
+                    Cookie::new(SESSION_COOKIE_NAME, new_session.session_id.to_string());
                 cookie.set_http_only(true);
                 cookie.set_secure(true);
-                cookie.set_same_site(tower_cookies::cookie::SameSite::Lax);
+                cookie.set_same_site(cja::server::cookies::SameSite::Lax);
                 cookie.set_max_age(time::Duration::seconds(SESSION_EXPIRATION_SECONDS));
                 cookie_jar.add(cookie);
 
@@ -101,13 +99,11 @@ impl FromRequestParts<AppState> for CurrentSession {
                 };
 
                 // Set the session cookie
-                let mut cookie = tower_cookies::Cookie::new(
-                    SESSION_COOKIE_NAME,
-                    new_session.session_id.to_string(),
-                );
+                let mut cookie =
+                    Cookie::new(SESSION_COOKIE_NAME, new_session.session_id.to_string());
                 cookie.set_http_only(true);
                 cookie.set_secure(true);
-                cookie.set_same_site(tower_cookies::cookie::SameSite::Lax);
+                cookie.set_same_site(cja::server::cookies::SameSite::Lax);
                 cookie.set_max_age(time::Duration::seconds(SESSION_EXPIRATION_SECONDS));
                 cookie_jar.add(cookie);
 
