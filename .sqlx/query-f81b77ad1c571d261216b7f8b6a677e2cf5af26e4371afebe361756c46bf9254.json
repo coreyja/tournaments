@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM game_battlesnakes\n        WHERE game_id = $1 AND battlesnake_id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f81b77ad1c571d261216b7f8b6a677e2cf5af26e4371afebe361756c46bf9254"
+}

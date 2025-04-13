@@ -9,11 +9,10 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cookies::CookieJar,
     errors::{ServerError, ServerResult},
     models::session::{
         self, FLASH_TYPE_ERROR, FLASH_TYPE_INFO, FLASH_TYPE_PRIMARY, FLASH_TYPE_SUCCESS,
-        FLASH_TYPE_WARNING, SESSION_COOKIE_NAME,
+        FLASH_TYPE_WARNING,
     },
     routes::auth::CurrentSession,
     state::AppState,

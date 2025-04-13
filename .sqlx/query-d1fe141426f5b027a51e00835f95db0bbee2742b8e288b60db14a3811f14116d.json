@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO game_battlesnakes (\n            game_id,\n            battlesnake_id\n        )\n        VALUES ($1, $2)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d1fe141426f5b027a51e00835f95db0bbee2742b8e288b60db14a3811f14116d"
+}
