@@ -170,3 +170,44 @@ impl FromRequestParts<AppState> for CurrentUser {
         Ok(CurrentUser(user))
     }
 }
+
+/// Extractor for getting both the authenticated user and their session
+///
+/// This extractor will return a 401 Unauthorized error if the user is not logged in.
+/// Use this extractor in route handlers that require authentication and need the session.
+///
+/// Example:
+/// ```
+/// async fn protected_route(
+///    CurrentUserWithSession { user, session }: CurrentUserWithSession,
+/// ) -> impl IntoResponse {
+///    // User is guaranteed to be logged in here and you have access to their session
+///    format!("Hello, {}! Your session ID is {}", user.github_login, session.session_id)
+/// }
+/// ```
+pub struct CurrentUserWithSession {
+    pub user: User,
+    pub session: Session,
+}
+
+#[async_trait]
+impl FromRequestParts<AppState> for CurrentUserWithSession {
+    type Rejection = axum::response::Response;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let current_session = CurrentSession::from_request_parts(parts, state).await?;
+
+        // Check if user is logged in
+        let user = current_session.user.ok_or_else(|| {
+            ServerError(eyre!("Not authenticated"), StatusCode::UNAUTHORIZED).into_response()
+        })?;
+
+        Ok(CurrentUserWithSession {
+            user,
+            session: current_session.session,
+        })
+    }
+}

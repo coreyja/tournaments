@@ -18,7 +18,7 @@ use crate::{
     models::flow::GameCreationFlow,
     models::session,
     models::game::{GameBoardSize, GameType},
-    routes::auth::CurrentUser,
+    routes::auth::{CurrentUser, CurrentUserWithSession},
     state::AppState,
 };
 
@@ -240,7 +240,7 @@ pub async fn reset_snake_selections(
 #[debug_handler]
 pub async fn add_battlesnake(
     State(state): State<AppState>,
-    CurrentUser(user): CurrentUser,
+    CurrentUserWithSession { user, session }: CurrentUserWithSession,
     Path((flow_id, battlesnake_id)): Path<(Uuid, Uuid)>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     // Get the flow
@@ -256,17 +256,10 @@ pub async fn add_battlesnake(
     // Set appropriate flash message if the add fails
     if !added {
         if flow.selected_count() >= 4 {
-            // Set an error flash message in the session
-            let session_id = session::get_session_id_for_user(&state.db, user.user_id)
-                .await
-                .wrap_err("Failed to get session ID")
-                .with_status(StatusCode::INTERNAL_SERVER_ERROR)?
-                .ok_or_else(|| "No session found for user".to_string())
-                .with_status(StatusCode::BAD_REQUEST)?;
-            
+            // Set an error flash message in the session            
             session::set_flash_message(
                 &state.db,
-                session_id,
+                session.session_id,
                 "Maximum of 4 battlesnakes allowed".to_string(),
                 session::FLASH_TYPE_WARNING,
             )
@@ -346,7 +339,7 @@ pub async fn search_battlesnakes(
 #[debug_handler]
 pub async fn create_game(
     State(state): State<AppState>,
-    CurrentUser(user): CurrentUser,
+    CurrentUserWithSession { user, session }: CurrentUserWithSession,
     Path(flow_id): Path<Uuid>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     // Get the flow
@@ -371,16 +364,9 @@ pub async fn create_game(
                 .wrap_err("Failed to delete game flow")?;
             
             // Set a success flash message in the session
-            let session_id = session::get_session_id_for_user(&state.db, user.user_id)
-                .await
-                .wrap_err("Failed to get session ID")
-                .with_status(StatusCode::INTERNAL_SERVER_ERROR)?
-                .ok_or_else(|| "No session found for user".to_string())
-                .with_status(StatusCode::BAD_REQUEST)?;
-            
             session::set_flash_message(
                 &state.db,
-                session_id,
+                session.session_id,
                 "Game created successfully!".to_string(),
                 session::FLASH_TYPE_SUCCESS,
             )
@@ -392,16 +378,9 @@ pub async fn create_game(
         },
         Err(error) => {
             // Set an error flash message in the session
-            let session_id = session::get_session_id_for_user(&state.db, user.user_id)
-                .await
-                .wrap_err("Failed to get session ID")
-                .with_status(StatusCode::INTERNAL_SERVER_ERROR)?
-                .ok_or_else(|| "No session found for user".to_string())
-                .with_status(StatusCode::BAD_REQUEST)?;
-            
             session::set_flash_message(
                 &state.db,
-                session_id,
+                session.session_id,
                 error.to_string(),
                 session::FLASH_TYPE_ERROR,
             )
