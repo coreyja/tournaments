@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            battlesnake_id,\n            user_id,\n            name,\n            url,\n            created_at,\n            updated_at\n        FROM battlesnakes\n        WHERE user_id = $1\n        ORDER BY name ASC\n        ",
+  "query": "\n        SELECT\n            battlesnake_id,\n            user_id,\n            name,\n            url,\n            visibility as \"visibility: Visibility\",\n            created_at,\n            updated_at\n        FROM battlesnakes\n        WHERE user_id = $1\n        ORDER BY name ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -25,11 +25,16 @@
       },
       {
         "ordinal": 4,
+        "name": "visibility: Visibility",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
@@ -45,8 +50,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "9fe5d92b1c2ebe5164cb4fe1068598edb2f233e0ce58e0e2bd2718c1ec98361c"
+  "hash": "d430d030bd7befdb5f3f8a73b681bd05cf8c11efd89d3325621f42165ce5ea9a"
 }

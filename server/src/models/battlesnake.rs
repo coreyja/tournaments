@@ -1,7 +1,44 @@
 use color_eyre::eyre::Context as _;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Type};
+use std::str::FromStr;
 use uuid::Uuid;
+
+// Visibility enum for battlesnakes
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Type)]
+#[sqlx(type_name = "text", rename_all = "lowercase")]
+pub enum Visibility {
+    Public,
+    Private,
+}
+
+impl Visibility {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Visibility::Public => "public",
+            Visibility::Private => "private",
+        }
+    }
+}
+
+impl FromStr for Visibility {
+    type Err = color_eyre::eyre::Report;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "public" => Ok(Visibility::Public),
+            "private" => Ok(Visibility::Private),
+            _ => Err(color_eyre::eyre::eyre!("Invalid visibility: {}", s)),
+        }
+    }
+}
+
+// Default implementation for Visibility - default to Public
+impl Default for Visibility {
+    fn default() -> Self {
+        Visibility::Public
+    }
+}
 
 // Battlesnake model for our application
 #[derive(Debug, Serialize, Deserialize)]
@@ -10,6 +47,7 @@ pub struct Battlesnake {
     pub user_id: Uuid,
     pub name: String,
     pub url: String,
+    pub visibility: Visibility,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -19,6 +57,7 @@ pub struct Battlesnake {
 pub struct CreateBattlesnake {
     pub name: String,
     pub url: String,
+    pub visibility: Visibility,
 }
 
 // For updating an existing battlesnake
@@ -26,6 +65,7 @@ pub struct CreateBattlesnake {
 pub struct UpdateBattlesnake {
     pub name: String,
     pub url: String,
+    pub visibility: Visibility,
 }
 
 // Database functions for battlesnake management
@@ -43,6 +83,7 @@ pub async fn get_battlesnakes_by_user_id(
             user_id,
             name,
             url,
+            visibility as "visibility: Visibility",
             created_at,
             updated_at
         FROM battlesnakes
@@ -71,6 +112,7 @@ pub async fn get_battlesnake_by_id(
             user_id,
             name,
             url,
+            visibility as "visibility: Visibility",
             created_at,
             updated_at
         FROM battlesnakes
@@ -91,26 +133,31 @@ pub async fn create_battlesnake(
     user_id: Uuid,
     data: CreateBattlesnake,
 ) -> cja::Result<Battlesnake> {
+    let visibility_str = data.visibility.as_str();
+
     let result = sqlx::query_as!(
         Battlesnake,
         r#"
         INSERT INTO battlesnakes (
             user_id,
             name,
-            url
+            url,
+            visibility
         )
-        VALUES ($1, $2, $3)
+        VALUES ($1, $2, $3, $4)
         RETURNING
             battlesnake_id,
             user_id,
             name,
             url,
+            visibility as "visibility: Visibility",
             created_at,
             updated_at
         "#,
         user_id,
         data.name,
-        data.url
+        data.url,
+        visibility_str
     )
     .fetch_one(pool)
     .await;
@@ -143,13 +190,16 @@ pub async fn update_battlesnake(
     user_id: Uuid,
     data: UpdateBattlesnake,
 ) -> cja::Result<Battlesnake> {
+    let visibility_str = data.visibility.as_str();
+
     let result = sqlx::query_as!(
         Battlesnake,
         r#"
         UPDATE battlesnakes
         SET
             name = $3,
-            url = $4
+            url = $4,
+            visibility = $5
         WHERE
             battlesnake_id = $1
             AND user_id = $2
@@ -158,13 +208,15 @@ pub async fn update_battlesnake(
             user_id,
             name,
             url,
+            visibility as "visibility: Visibility",
             created_at,
             updated_at
         "#,
         battlesnake_id,
         user_id,
         data.name,
-        data.url
+        data.url,
+        visibility_str
     )
     .fetch_one(pool)
     .await;
@@ -237,4 +289,58 @@ pub async fn belongs_to_user(
     .wrap_err("Failed to check if battlesnake belongs to user")?;
 
     Ok(result.exists)
+}
+
+// Get all public battlesnakes (for other users to select)
+pub async fn get_public_battlesnakes(pool: &PgPool) -> cja::Result<Vec<Battlesnake>> {
+    let battlesnakes = sqlx::query_as!(
+        Battlesnake,
+        r#"
+        SELECT
+            battlesnake_id,
+            user_id,
+            name,
+            url,
+            visibility as "visibility: Visibility",
+            created_at,
+            updated_at
+        FROM battlesnakes
+        WHERE visibility = 'public'
+        ORDER BY name ASC
+        "#
+    )
+    .fetch_all(pool)
+    .await
+    .wrap_err("Failed to fetch public battlesnakes from database")?;
+
+    Ok(battlesnakes)
+}
+
+// Get all battlesnakes available to a user (their own + public ones)
+pub async fn get_available_battlesnakes(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> cja::Result<Vec<Battlesnake>> {
+    let battlesnakes = sqlx::query_as!(
+        Battlesnake,
+        r#"
+        SELECT
+            battlesnake_id,
+            user_id,
+            name,
+            url,
+            visibility as "visibility: Visibility",
+            created_at,
+            updated_at
+        FROM battlesnakes
+        WHERE user_id = $1 OR visibility = 'public'
+        ORDER BY name ASC
+        "#,
+        user_id
+    )
+    .fetch_all(pool)
+    .await
+    .wrap_err("Failed to fetch available battlesnakes from database")?;
+
+    Ok(battlesnakes)
 }

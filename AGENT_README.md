@@ -14,6 +14,15 @@
 - Create migration: `sqlx migrate add --source migrations <migration_name>`
 - Recreate DB from scratch: `cargo sqlx db drop -y && cargo sqlx db create && cargo sqlx migrate run`
 
+## Database Migration Naming Conventions
+
+SQLx migrations should follow these naming conventions:
+
+- **Up migrations**: Always use the `.up.sql` extension (e.g., `20250415155810_add_visibility_to_battlesnakes.up.sql`)
+- **Down migrations**: Always use the `.down.sql` extension (e.g., `20250415155810_add_visibility_to_battlesnakes.down.sql`)
+
+When creating migrations with `sqlx migrate add`, SQLx will create a file with the timestamp and name, but without the `.up.sql` extension. You should rename this file manually to follow the convention above, and create a corresponding `.down.sql` file for rollbacks.
+
 ## SQLx Configuration
 
 SQLx uses offline query checking, which requires either a connection to the database or a query cache. When encountering SQL query errors like `set DATABASE_URL to use query macros online, or run cargo sqlx prepare to update the query cache`, use one of these solutions:

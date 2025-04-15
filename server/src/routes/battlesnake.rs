@@ -13,7 +13,7 @@ use crate::{
     components::page_factory::PageFactory,
     components::flash::Flash,
     errors::{ServerResult, WithStatus},
-    models::battlesnake::{self, CreateBattlesnake, UpdateBattlesnake},
+    models::battlesnake::{self, CreateBattlesnake, UpdateBattlesnake, Visibility},
     models::session,
     routes::auth::CurrentUser,
     state::AppState,
@@ -55,6 +55,7 @@ pub async fn list_battlesnakes(
                                 tr {
                                     th { "Name" }
                                     th { "URL" }
+                                    th { "Visibility" }
                                     th { "Actions" }
                                 }
                             }
@@ -64,6 +65,13 @@ pub async fn list_battlesnakes(
                                         td { (snake.name) }
                                         td { 
                                             a href=(snake.url) target="_blank" { (snake.url) }
+                                        }
+                                        td {
+                                            @if snake.visibility == Visibility::Public {
+                                                span class="badge bg-success text-white" { "Public" }
+                                            } @else {
+                                                span class="badge bg-secondary text-white" { "Private" }
+                                            }
                                         }
                                         td class="actions" {
                                             a href={"/battlesnakes/"(snake.battlesnake_id)"/edit"} class="btn btn-sm btn-primary" { "Edit" }
@@ -116,6 +124,15 @@ pub async fn new_battlesnake(
                         label for="url" { "URL" }
                         input type="url" id="url" name="url" class="form-control" required placeholder="https://your-battlesnake-server.com" {}
                         small class="form-text text-muted" { "The URL of your Battlesnake server" }
+                    }
+                    
+                    div class="form-group" {
+                        label for="visibility" { "Visibility" }
+                        select id="visibility" name="visibility" class="form-control" required {
+                            option value="public" selected { "Public (Available to all users)" }
+                            option value="private" { "Private (Only available to you)" }
+                        }
+                        small class="form-text text-muted" { "Control who can add this snake to games" }
                     }
                     
                     div class="form-group" style="margin-top: 20px;" {
@@ -226,6 +243,15 @@ pub async fn edit_battlesnake(
                         label for="url" { "URL" }
                         input type="url" id="url" name="url" class="form-control" required value=(battlesnake.url) {}
                         small class="form-text text-muted" { "The URL of your Battlesnake server" }
+                    }
+                    
+                    div class="form-group" {
+                        label for="visibility" { "Visibility" }
+                        select id="visibility" name="visibility" class="form-control" required {
+                            option value="public" selected=(battlesnake.visibility == Visibility::Public) { "Public (Available to all users)" }
+                            option value="private" selected=(battlesnake.visibility == Visibility::Private) { "Private (Only available to you)" }
+                        }
+                        small class="form-text text-muted" { "Control who can add this snake to games" }
                     }
                     
                     div class="form-group" style="margin-top: 20px;" {
