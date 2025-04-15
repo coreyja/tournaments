@@ -43,7 +43,6 @@ pub fn routes(app_state: AppState) -> axum::Router {
         .route("/games/new", get(game::new_game))
         .route("/games/:id", get(game::view_game))
         .route("/games/flow/:id", get(game::show_game_flow))
-        .route("/games/flow/:id/configure", axum::routing::post(game::configure_game))
         .route("/games/flow/:id/reset", axum::routing::post(game::reset_snake_selections))
         .route("/games/flow/:id/create", axum::routing::post(game::create_game))
         .route("/games/flow/:id/add-snake/:snake_id", axum::routing::post(game::add_battlesnake))

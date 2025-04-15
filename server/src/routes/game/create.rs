@@ -57,6 +57,11 @@ pub async fn show_game_flow(
     let user_battlesnakes = flow.get_user_battlesnakes(&state.db)
         .await
         .wrap_err("Failed to get user's battlesnakes")?;
+    
+    // Get the selected battlesnakes
+    let selected_battlesnakes = flow.get_selected_battlesnakes(&state.db)
+        .await
+        .wrap_err("Failed to get selected battlesnakes")?;
 
     // Render the game creation form
     Ok(page_factory.create_page_with_flash(
@@ -71,7 +76,7 @@ pub async fn show_game_flow(
                     }
                 }
 
-                form action={"/games/flow/"(flow_id)"/configure"} method="post" class="mb-4" {
+                form action={"/games/flow/"(flow_id)"/create"} method="post" class="mb-4" {
                     div class="form-group mb-3" {
                         label for="board_size" { "Board Size" }
                         select id="board_size" name="board_size" class="form-control" required {
@@ -90,23 +95,40 @@ pub async fn show_game_flow(
                             option value="Snail Mode" selected[flow.game_type == GameType::SnailMode] { "Snail Mode" }
                         }
                     }
-
-                    button type="submit" class="btn btn-primary" { "Update Game Settings" }
-                }
-                
-                // Display current selection count if any
-                @if flow.selected_count() > 0 {
-                    div class="alert alert-info" {
-                        p { "You have selected " (flow.selected_count()) " of 4 possible battlesnakes." }
-                        
-                        form action={"/games/flow/"(flow_id)"/reset"} method="post" class="d-inline" {
-                            button type="submit" class="btn btn-sm btn-secondary" { "Reset Selection" }
-                        }
-
-                        @if flow.selected_count() > 0 {
-                            form action={"/games/flow/"(flow_id)"/create"} method="post" class="d-inline ms-2" {
-                                button type="submit" class="btn btn-sm btn-success" { "Create Game with Selected Snakes" }
+                    
+                    // Display current selection count if any
+                    @if flow.selected_count() > 0 {
+                        div class="alert alert-info mb-3" {
+                            p { "You have selected " (flow.selected_count()) " of 4 possible battlesnakes." }
+                            
+                            // Display the selected battlesnakes
+                            @if !selected_battlesnakes.is_empty() {
+                                div class="mt-2" {
+                                    p class="mb-1 fw-bold" { "Selected Battlesnakes:" }
+                                    ul class="list-group" {
+                                        @for snake in &selected_battlesnakes {
+                                            li class="list-group-item d-flex justify-content-between align-items-center" {
+                                                span { (snake.name) }
+                                                form action={"/games/flow/"(flow_id)"/remove-snake/"(snake.battlesnake_id)} method="post" class="d-inline" {
+                                                    button type="submit" class="btn btn-sm btn-danger" { "Remove" }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
+                            
+                            div class="mt-3" {
+                                button type="submit" class="btn btn-success me-2" { "Create Game" }
+                                
+                                form action={"/games/flow/"(flow_id)"/reset"} method="post" class="d-inline" {
+                                    button type="submit" class="btn btn-secondary" { "Reset Selection" }
+                                }
+                            }
+                        }
+                    } @else {
+                        div class="alert alert-warning mb-3" {
+                            p { "Please select at least one battlesnake to create a game." }
                         }
                     }
                 }
@@ -174,40 +196,9 @@ pub async fn show_game_flow(
 // Configure the game (board size and game type)
 #[derive(Debug, Deserialize)]
 pub struct ConfigureGameForm {
+    // Optional parameters since they might not be provided in the form
     pub board_size: String,
     pub game_type: String,
-}
-
-#[debug_handler]
-pub async fn configure_game(
-    State(state): State<AppState>,
-    CurrentUser(user): CurrentUser,
-    Path(flow_id): Path<Uuid>,
-    Form(data): Form<ConfigureGameForm>,
-) -> ServerResult<impl IntoResponse, StatusCode> {
-    // Get the flow
-    let mut flow = GameCreationFlow::get_by_id(&state.db, flow_id, user.user_id)
-        .await
-        .wrap_err("Failed to get game flow")?
-        .ok_or_else(|| "Game flow not found".to_string())
-        .with_status(StatusCode::NOT_FOUND)?;
-    
-    // Update with user's selections
-    flow.board_size = GameBoardSize::from_str(&data.board_size)
-        .map_err(|e| e.to_string())
-        .with_status(StatusCode::BAD_REQUEST)?;
-    
-    flow.game_type = GameType::from_str(&data.game_type)
-        .map_err(|e| e.to_string())
-        .with_status(StatusCode::BAD_REQUEST)?;
-    
-    // Update the flow
-    flow.update(&state.db)
-        .await
-        .wrap_err("Failed to update game flow")?;
-    
-    // Redirect back to the flow page
-    Ok(Redirect::to(&format!("/games/flow/{}", flow_id)).into_response())
 }
 
 // Reset the snake selections in the flow
@@ -341,13 +332,28 @@ pub async fn create_game(
     State(state): State<AppState>,
     CurrentUserWithSession { user, session }: CurrentUserWithSession,
     Path(flow_id): Path<Uuid>,
+    Form(data): Form<ConfigureGameForm>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     // Get the flow
-    let flow = GameCreationFlow::get_by_id(&state.db, flow_id, user.user_id)
+    let mut flow = GameCreationFlow::get_by_id(&state.db, flow_id, user.user_id)
         .await
         .wrap_err("Failed to get game flow")?
         .ok_or_else(|| "Game flow not found".to_string())
         .with_status(StatusCode::NOT_FOUND)?;
+    
+    // Update with user's selections if provided
+    if let Ok(board_size) = GameBoardSize::from_str(&data.board_size) {
+        flow.board_size = board_size;
+    }
+    
+    if let Ok(game_type) = GameType::from_str(&data.game_type) {
+        flow.game_type = game_type;
+    }
+    
+    // Update the flow with settings changes
+    flow.update(&state.db)
+        .await
+        .wrap_err("Failed to update game flow")?;
     
     // Validate and create the game
     let validate_result = flow.validate();
