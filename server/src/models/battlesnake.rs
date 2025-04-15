@@ -7,6 +7,7 @@ use uuid::Uuid;
 // Visibility enum for battlesnakes
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Type)]
 #[sqlx(type_name = "text", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum Visibility {
     Public,
     Private,
