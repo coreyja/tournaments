@@ -71,12 +71,44 @@ impl FromStr for GameType {
     }
 }
 
+// Game status enum
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum GameStatus {
+    Waiting,
+    Running,
+    Finished,
+}
+
+impl GameStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            GameStatus::Waiting => "waiting",
+            GameStatus::Running => "running",
+            GameStatus::Finished => "finished",
+        }
+    }
+}
+
+impl FromStr for GameStatus {
+    type Err = color_eyre::eyre::Report;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "waiting" => Ok(GameStatus::Waiting),
+            "running" => Ok(GameStatus::Running),
+            "finished" => Ok(GameStatus::Finished),
+            _ => Err(color_eyre::eyre::eyre!("Invalid game status: {}", s)),
+        }
+    }
+}
+
 // Game model for our application
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Game {
     pub game_id: Uuid,
     pub board_size: GameBoardSize,
     pub game_type: GameType,
+    pub status: GameStatus,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -106,6 +138,7 @@ pub async fn get_all_games(pool: &PgPool) -> cja::Result<Vec<Game>> {
             game_id,
             board_size,
             game_type,
+            status,
             created_at,
             updated_at
         FROM games
@@ -123,11 +156,14 @@ pub async fn get_all_games(pool: &PgPool) -> cja::Result<Vec<Game>> {
                 .wrap_err_with(|| format!("Invalid board size: {}", row.board_size))?;
             let game_type = GameType::from_str(&row.game_type)
                 .wrap_err_with(|| format!("Invalid game type: {}", row.game_type))?;
+            let status = GameStatus::from_str(&row.status)
+                .wrap_err_with(|| format!("Invalid game status: {}", row.status))?;
 
             Ok(Game {
                 game_id: row.game_id,
                 board_size,
                 game_type,
+                status,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             })
@@ -145,6 +181,7 @@ pub async fn get_game_by_id(pool: &PgPool, game_id: Uuid) -> cja::Result<Option<
             game_id,
             board_size,
             game_type,
+            status,
             created_at,
             updated_at
         FROM games
@@ -162,11 +199,14 @@ pub async fn get_game_by_id(pool: &PgPool, game_id: Uuid) -> cja::Result<Option<
                 .wrap_err_with(|| format!("Invalid board size: {}", row.board_size))?;
             let game_type = GameType::from_str(&row.game_type)
                 .wrap_err_with(|| format!("Invalid game type: {}", row.game_type))?;
+            let status = GameStatus::from_str(&row.status)
+                .wrap_err_with(|| format!("Invalid game status: {}", row.status))?;
 
             Some(Game {
                 game_id: row.game_id,
                 board_size,
                 game_type,
+                status,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             })
@@ -230,23 +270,27 @@ pub async fn create_game_with_snakes(
     // Create the game
     let board_size_str = data.board_size.as_str();
     let game_type_str = data.game_type.as_str();
+    let status_str = GameStatus::Waiting.as_str();
 
     let row = sqlx::query!(
         r#"
         INSERT INTO games (
             board_size,
-            game_type
+            game_type,
+            status
         )
-        VALUES ($1, $2)
+        VALUES ($1, $2, $3)
         RETURNING
             game_id,
             board_size,
             game_type,
+            status,
             created_at,
             updated_at
         "#,
         board_size_str,
-        game_type_str
+        game_type_str,
+        status_str
     )
     .fetch_one(&mut *tx) // Access the connection inside the transaction
     .await
@@ -256,6 +300,8 @@ pub async fn create_game_with_snakes(
         game_id: row.game_id,
         board_size: data.board_size,
         game_type: data.game_type,
+        status: GameStatus::from_str(&row.status)
+            .wrap_err_with(|| format!("Invalid game status: {}", row.status))?,
         created_at: row.created_at,
         updated_at: row.updated_at,
     };
@@ -293,23 +339,27 @@ where
 {
     let board_size_str = data.board_size.as_str();
     let game_type_str = data.game_type.as_str();
+    let status_str = GameStatus::Waiting.as_str();
 
     let row = sqlx::query!(
         r#"
         INSERT INTO games (
             board_size,
-            game_type
+            game_type,
+            status
         )
-        VALUES ($1, $2)
+        VALUES ($1, $2, $3)
         RETURNING
             game_id,
             board_size,
             game_type,
+            status,
             created_at,
             updated_at
         "#,
         board_size_str,
-        game_type_str
+        game_type_str,
+        status_str
     )
     .fetch_one(executor)
     .await
@@ -319,6 +369,8 @@ where
         game_id: row.game_id,
         board_size: data.board_size,
         game_type: data.game_type,
+        status: GameStatus::from_str(&row.status)
+            .wrap_err_with(|| format!("Invalid game status: {}", row.status))?,
         created_at: row.created_at,
         updated_at: row.updated_at,
     })
@@ -347,6 +399,104 @@ where
     .execute(executor)
     .await
     .wrap_err_with(|| format!("Failed to add battlesnake {} to game", data.battlesnake_id))?;
+
+    Ok(())
+}
+
+// Update the status of a game
+pub async fn update_game_status(
+    pool: &PgPool,
+    game_id: Uuid,
+    status: GameStatus,
+) -> cja::Result<Game> {
+    let status_str = status.as_str();
+
+    let row = sqlx::query!(
+        r#"
+        UPDATE games
+        SET status = $2
+        WHERE game_id = $1
+        RETURNING
+            game_id,
+            board_size,
+            game_type,
+            status,
+            created_at,
+            updated_at
+        "#,
+        game_id,
+        status_str
+    )
+    .fetch_one(pool)
+    .await
+    .wrap_err_with(|| format!("Failed to update status for game {}", game_id))?;
+
+    let board_size = GameBoardSize::from_str(&row.board_size)
+        .wrap_err_with(|| format!("Invalid board size: {}", row.board_size))?;
+    let game_type = GameType::from_str(&row.game_type)
+        .wrap_err_with(|| format!("Invalid game type: {}", row.game_type))?;
+    let status = GameStatus::from_str(&row.status)
+        .wrap_err_with(|| format!("Invalid game status: {}", row.status))?;
+
+    Ok(Game {
+        game_id: row.game_id,
+        board_size,
+        game_type,
+        status,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+    })
+}
+
+// Run a game and assign random placements
+pub async fn run_game(pool: &PgPool, game_id: Uuid) -> cja::Result<()> {
+    // Update status to running
+    update_game_status(pool, game_id, GameStatus::Running).await?;
+
+    // Get all the battlesnakes in the game
+    let battlesnakes = crate::models::game_battlesnake::get_battlesnakes_by_game_id(pool, game_id)
+        .await
+        .wrap_err("Failed to get battlesnakes for game")?;
+
+    if battlesnakes.is_empty() {
+        return Err(cja::color_eyre::eyre::eyre!("No battlesnakes in the game"));
+    }
+
+    // For now, just assign random placements
+    use rand::seq::SliceRandom;
+    use rand::thread_rng;
+
+    // Create indices vector
+    let mut indices: Vec<usize> = (0..battlesnakes.len()).collect();
+
+    // Create a new thread_rng inside the async block - this avoids the Send issue
+    {
+        let mut rng = thread_rng();
+        indices.shuffle(&mut rng);
+    }
+
+    // Assign placements based on shuffled indices
+    for (i, battlesnake) in indices.iter().enumerate() {
+        let placement = (i + 1) as i32; // 1-based placement
+        let battlesnake_id = battlesnakes[*battlesnake].battlesnake_id;
+
+        crate::models::game_battlesnake::set_game_result(
+            pool,
+            game_id,
+            battlesnake_id,
+            crate::models::game_battlesnake::SetGameResult { placement },
+        )
+        .await
+        .wrap_err_with(|| {
+            format!(
+                "Failed to set game result for battlesnake {}",
+                battlesnake_id
+            )
+        })?;
+    }
+
+    // Update status to finished
+    update_game_status(pool, game_id, GameStatus::Finished).await?;
 
     Ok(())
 }

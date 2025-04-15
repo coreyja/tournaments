@@ -7,6 +7,7 @@ use crate::{components::page_factory::PageFactory, errors::ServerResult, state::
 pub mod auth;
 pub mod battlesnake;
 pub mod github_auth;
+pub mod game;
 
 pub fn routes(app_state: AppState) -> axum::Router {
     axum::Router::new()
@@ -37,6 +38,18 @@ pub fn routes(app_state: AppState) -> axum::Router {
             "/battlesnakes/:id/delete",
             axum::routing::post(battlesnake::delete_battlesnake),
         )
+        // Game routes
+        .route("/games", get(game::list_games))
+        .route("/games/new", get(game::new_game))
+        .route("/games/:id", get(game::view_game))
+        .route("/games/flow/:id", get(game::show_game_flow))
+        .route("/games/flow/:id/configure", axum::routing::post(game::configure_game))
+        .route("/games/flow/:id/reset", axum::routing::post(game::reset_snake_selections))
+        .route("/games/flow/:id/create", axum::routing::post(game::create_game))
+        .route("/games/flow/:id/add-snake/:snake_id", axum::routing::post(game::add_battlesnake))
+        .route("/games/flow/:id/remove-snake/:snake_id", axum::routing::post(game::remove_battlesnake))
+        .route("/games/flow/:id/search", get(game::search_battlesnakes))
+        // Static files
         .route(
             "/static/*path",
             get(crate::static_assets::serve_static_file),
@@ -120,6 +133,13 @@ async fn profile_page(
                         h3 { "Your Battlesnakes" }
                         p { "Manage your Battlesnake collection for tournaments." }
                         a href="/battlesnakes" class="btn btn-primary" { "Manage Battlesnakes" }
+
+                        h3 class="mt-4" { "Games" }
+                        p { "Create and view games with your Battlesnakes." }
+                        div {
+                            a href="/games/new" class="btn btn-primary" { "Create New Game" }
+                            a href="/games" class="btn btn-secondary ms-2" { "View All Games" }
+                        }
                     }
                 }
 

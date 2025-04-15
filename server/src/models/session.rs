@@ -439,3 +439,25 @@ pub async fn clean_expired_sessions(pool: &PgPool) -> cja::Result<u64> {
 
     Ok(result.rows_affected())
 }
+
+// Get the session ID for a user
+pub async fn get_session_id_for_user(
+    pool: &sqlx::PgPool,
+    user_id: uuid::Uuid,
+) -> cja::Result<Option<uuid::Uuid>> {
+    let row = sqlx::query!(
+        r#"
+        SELECT session_id
+        FROM sessions
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+        LIMIT 1
+        "#,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await
+    .wrap_err("Failed to get session ID for user")?;
+
+    Ok(row.map(|r| r.session_id))
+}

@@ -4,7 +4,7 @@ use sqlx::PgPool;
 use std::str::FromStr;
 use uuid::Uuid;
 
-use super::game::{Game, GameBoardSize, GameType};
+use super::game::{Game, GameBoardSize, GameStatus, GameType};
 
 // GameBattlesnake model for our application
 #[derive(Debug, Serialize, Deserialize)]
@@ -89,6 +89,7 @@ pub async fn get_games_by_battlesnake_id(
             g.game_id,
             g.board_size,
             g.game_type,
+            g.status,
             g.created_at,
             g.updated_at
         FROM games g
@@ -109,11 +110,14 @@ pub async fn get_games_by_battlesnake_id(
                 .wrap_err_with(|| format!("Invalid board size: {}", row.board_size))?;
             let game_type = GameType::from_str(&row.game_type)
                 .wrap_err_with(|| format!("Invalid game type: {}", row.game_type))?;
+            let status = GameStatus::from_str(&row.status)
+                .wrap_err_with(|| format!("Invalid game status: {}", row.status))?;
 
             Ok(Game {
                 game_id: row.game_id,
                 board_size,
                 game_type,
+                status,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             })
