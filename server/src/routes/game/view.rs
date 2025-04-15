@@ -113,10 +113,10 @@ pub async fn list_games(
     page_factory: PageFactory,
     flash: Flash,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
-    // Get all games
-    let games = crate::models::game::get_all_games(&state.db)
+    // Get all games with winners
+    let games_with_winners = crate::models::game::get_all_games_with_winners(&state.db)
         .await
-        .wrap_err("Failed to get games list")?;
+        .wrap_err("Failed to get games list with winners")?;
     
     // Render the games list page
     Ok(page_factory.create_page_with_flash(
@@ -131,7 +131,7 @@ pub async fn list_games(
                     }
                 }
 
-                @if games.is_empty() {
+                @if games_with_winners.is_empty() {
                     div class="alert alert-info" {
                         p { "No games have been created yet." }
                     }
@@ -143,16 +143,30 @@ pub async fn list_games(
                                     th { "Game ID" }
                                     th { "Board Size" }
                                     th { "Game Type" }
+                                    th { "Winner" }
+                                    th { "Status" }
                                     th { "Created" }
                                     th { "Actions" }
                                 }
                             }
                             tbody {
-                                @for game in &games {
+                                @for (game, winner) in &games_with_winners {
                                     tr {
                                         td { (game.game_id) }
                                         td { (game.board_size.as_str()) }
                                         td { (game.game_type.as_str()) }
+                                        td {
+                                            @if let Some(winner_name) = winner {
+                                                span class="badge bg-warning text-dark" { "🏆 " (winner_name) }
+                                            } @else {
+                                                @if game.status == crate::models::game::GameStatus::Finished {
+                                                    span class="badge bg-secondary text-white" { "No Winner" }
+                                                } @else {
+                                                    span class="badge bg-info text-dark" { "In Progress" }
+                                                }
+                                            }
+                                        }
+                                        td { (game.status.as_str()) }
                                         td { (game.created_at.format("%Y-%m-%d %H:%M:%S")) }
                                         td {
                                             a href={"/games/"(game.game_id)} class="btn btn-sm btn-primary" { "View" }
