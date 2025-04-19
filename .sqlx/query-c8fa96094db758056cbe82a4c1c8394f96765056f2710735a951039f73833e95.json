@@ -1,0 +1,106 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                tournament_id, name, description, user_id, game_type, board_size,\n                registration_status, visibility, status,\n                match_style, max_snakes_per_user, required_participants, current_round,\n                created_at, updated_at\n            FROM tournaments\n            WHERE tournament_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "tournament_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "game_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "board_size",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "registration_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "visibility",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "match_style",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "max_snakes_per_user",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "required_participants",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "current_round",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 13,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c8fa96094db758056cbe82a4c1c8394f96765056f2710735a951039f73833e95"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE tournaments\n            SET status = $1, updated_at = now()\n            WHERE tournament_id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d3381d186f17315759125da1dd9b3bc5956072dd9dcafbfea029e0252792d3f8"
+}

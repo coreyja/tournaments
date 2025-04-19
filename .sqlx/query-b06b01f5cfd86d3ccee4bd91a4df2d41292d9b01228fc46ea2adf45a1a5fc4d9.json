@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM tournaments\n            WHERE tournament_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b06b01f5cfd86d3ccee4bd91a4df2d41292d9b01228fc46ea2adf45a1a5fc4d9"
+}
