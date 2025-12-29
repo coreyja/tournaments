@@ -66,3 +66,12 @@ pub struct UserResponse {
     pub email: Option<String>,
     pub avatar_url: String,
 }
+
+/// Request to pre-register a user for an OAuth state
+#[derive(Debug, Deserialize)]
+pub struct PreRegisterRequest {
+    /// The OAuth state value that will be used in the authorize request
+    pub state: String,
+    /// The user configuration to return for this state
+    pub user: MockUserConfig,
+}

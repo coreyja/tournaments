@@ -11,11 +11,24 @@ pub struct MockOAuthState {
     codes: Arc<RwLock<HashMap<String, MockUserConfig>>>,
     /// Maps access token -> MockUserConfig
     tokens: Arc<RwLock<HashMap<String, MockUserConfig>>>,
+    /// Maps OAuth state -> MockUserConfig (pre-registered via admin endpoint)
+    pre_registered: Arc<RwLock<HashMap<String, MockUserConfig>>>,
 }
 
 impl MockOAuthState {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Pre-register a user for a specific OAuth state value.
+    /// When authorize is called with this state, the pre-registered user will be used.
+    pub async fn pre_register_user(&self, state: String, user: MockUserConfig) {
+        self.pre_registered.write().await.insert(state, user);
+    }
+
+    /// Get and remove a pre-registered user for a state
+    pub async fn take_pre_registered(&self, state: &str) -> Option<MockUserConfig> {
+        self.pre_registered.write().await.remove(state)
     }
 
     /// Store an auth code with its associated user config

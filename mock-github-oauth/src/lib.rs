@@ -12,9 +12,12 @@ pub fn create_router() -> Router {
     let state = MockOAuthState::new();
 
     Router::new()
+        // OAuth endpoints (mimic GitHub)
         .route("/login/oauth/authorize", get(routes::authorize))
         .route("/login/oauth/access_token", post(routes::access_token))
         .route("/user", get(routes::get_user))
+        // Admin endpoint for test control
+        .route("/_admin/set-user-for-state", post(routes::set_user_for_state))
         .with_state(state)
 }
 

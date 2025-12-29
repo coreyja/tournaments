@@ -7,11 +7,37 @@ use axum::{
 
 use crate::{state::MockOAuthState, types::*};
 
+/// POST /_admin/set-user-for-state
+///
+/// Pre-register a user for a specific OAuth state value.
+/// When authorize is called with this state, the pre-registered user will be used.
+/// This allows tests to control which user is returned without passing mock params through the app.
+pub async fn set_user_for_state(
+    State(state): State<MockOAuthState>,
+    Json(request): Json<PreRegisterRequest>,
+) -> impl IntoResponse {
+    tracing::info!(
+        oauth_state = %request.state,
+        user_login = %request.user.login,
+        "Pre-registering user for OAuth state"
+    );
+
+    state
+        .pre_register_user(request.state, request.user)
+        .await;
+
+    StatusCode::OK
+}
+
 /// GET /login/oauth/authorize
 ///
 /// Simulates GitHub's OAuth authorization page.
 /// Immediately redirects to the callback with a code.
-/// Mock user config can be passed via query params.
+///
+/// User resolution priority:
+/// 1. Pre-registered user for this state (via /_admin/set-user-for-state)
+/// 2. Mock user config from query params (legacy, for backwards compat)
+/// 3. Default mock user
 pub async fn authorize(
     State(state): State<MockOAuthState>,
     Query(params): Query<AuthorizeParams>,
@@ -19,15 +45,27 @@ pub async fn authorize(
     // Generate a unique authorization code
     let code = format!("mock_code_{}", uuid::Uuid::new_v4());
 
-    // Build the mock user from params or use defaults
-    let user = MockUserConfig {
-        id: params.mock_user_id.unwrap_or(12345),
-        login: params
-            .mock_user_login
-            .unwrap_or_else(|| "mock_user".to_string()),
-        name: params.mock_user_name.or(Some("Mock User".to_string())),
-        email: params.mock_user_email.or(Some("mock@example.com".to_string())),
-        avatar_url: "https://example.com/avatar.png".to_string(),
+    // First, check for a pre-registered user for this state
+    let user = if let Some(pre_registered) = state.take_pre_registered(&params.state).await {
+        tracing::info!(
+            oauth_state = %params.state,
+            user_login = %pre_registered.login,
+            "Using pre-registered user for OAuth state"
+        );
+        pre_registered
+    } else {
+        // Fall back to query params or defaults
+        MockUserConfig {
+            id: params.mock_user_id.unwrap_or(12345),
+            login: params
+                .mock_user_login
+                .unwrap_or_else(|| "mock_user".to_string()),
+            name: params.mock_user_name.or(Some("Mock User".to_string())),
+            email: params
+                .mock_user_email
+                .or(Some("mock@example.com".to_string())),
+            avatar_url: "https://example.com/avatar.png".to_string(),
+        }
     };
 
     tracing::info!(
