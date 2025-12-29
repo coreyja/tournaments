@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     http::{StatusCode, request::Parts},
     response::{IntoResponse as _, Response},
@@ -29,7 +28,6 @@ pub struct CurrentSession {
     pub user: Option<User>,
 }
 /// Extract the current session with optional user
-#[axum::async_trait]
 impl FromRequestParts<AppState> for CurrentSession {
     type Rejection = Response;
 
@@ -138,7 +136,6 @@ pub struct CurrentUser(pub User);
 /// Instead, it will return Option<User> which will be None if not logged in.
 pub struct OptionalUser(pub Option<User>);
 
-#[async_trait]
 impl FromRequestParts<AppState> for OptionalUser {
     type Rejection = axum::response::Response;
 
@@ -152,7 +149,6 @@ impl FromRequestParts<AppState> for OptionalUser {
     }
 }
 
-#[async_trait]
 impl FromRequestParts<AppState> for CurrentUser {
     type Rejection = axum::response::Response;
 
@@ -190,7 +186,6 @@ pub struct CurrentUserWithSession {
     pub session: Session,
 }
 
-#[async_trait]
 impl FromRequestParts<AppState> for CurrentUserWithSession {
     type Rejection = axum::response::Response;
 

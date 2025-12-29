@@ -71,6 +71,8 @@ async fn spawn_application_tasks(
         futures.push(tokio::spawn(cja::jobs::worker::job_worker(
             app_state.clone(),
             jobs::Jobs,
+            std::time::Duration::from_secs(60),
+            20,
         )));
     } else {
         info!("Jobs Disabled");

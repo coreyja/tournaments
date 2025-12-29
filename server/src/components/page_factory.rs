@@ -1,4 +1,4 @@
-use axum::{async_trait, extract::FromRequestParts, http::request::Parts, response::Response};
+use axum::{extract::FromRequestParts, http::request::Parts, response::Response};
 use maud::Render;
 
 use crate::{
@@ -41,7 +41,6 @@ impl PageFactory {
     }
 }
 
-#[async_trait]
 impl FromRequestParts<AppState> for PageFactory {
     type Rejection = Response;
 

@@ -29,28 +29,28 @@ pub fn routes(app_state: AppState) -> axum::Router {
             "/battlesnakes",
             axum::routing::post(battlesnake::create_battlesnake),
         )
-        .route("/battlesnakes/:id/edit", get(battlesnake::edit_battlesnake))
+        .route("/battlesnakes/{id}/edit", get(battlesnake::edit_battlesnake))
         .route(
-            "/battlesnakes/:id/update",
+            "/battlesnakes/{id}/update",
             axum::routing::post(battlesnake::update_battlesnake),
         )
         .route(
-            "/battlesnakes/:id/delete",
+            "/battlesnakes/{id}/delete",
             axum::routing::post(battlesnake::delete_battlesnake),
         )
         // Game routes
         .route("/games", get(game::list_games))
         .route("/games/new", get(game::new_game))
-        .route("/games/:id", get(game::view_game))
-        .route("/games/flow/:id", get(game::show_game_flow))
-        .route("/games/flow/:id/reset", axum::routing::post(game::reset_snake_selections))
-        .route("/games/flow/:id/create", axum::routing::post(game::create_game))
-        .route("/games/flow/:id/add-snake/:snake_id", axum::routing::post(game::add_battlesnake))
-        .route("/games/flow/:id/remove-snake/:snake_id", axum::routing::post(game::remove_battlesnake))
-        .route("/games/flow/:id/search", get(game::search_battlesnakes))
+        .route("/games/{id}", get(game::view_game))
+        .route("/games/flow/{id}", get(game::show_game_flow))
+        .route("/games/flow/{id}/reset", axum::routing::post(game::reset_snake_selections))
+        .route("/games/flow/{id}/create", axum::routing::post(game::create_game))
+        .route("/games/flow/{id}/add-snake/{snake_id}", axum::routing::post(game::add_battlesnake))
+        .route("/games/flow/{id}/remove-snake/{snake_id}", axum::routing::post(game::remove_battlesnake))
+        .route("/games/flow/{id}/search", get(game::search_battlesnakes))
         // Static files
         .route(
-            "/static/*path",
+            "/static/{*path}",
             get(crate::static_assets::serve_static_file),
         )
         // Add trace layer for debugging

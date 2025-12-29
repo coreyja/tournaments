@@ -24,7 +24,6 @@ impl Flasher {
     }
 }
 
-#[async_trait::async_trait]
 impl FromRequestParts<AppState> for Flasher {
     type Rejection = Response;
 
