@@ -7,6 +7,10 @@ pub struct GitHubOAuthConfig {
     pub client_id: String,
     pub client_secret: String,
     pub redirect_uri: String,
+    // Configurable URLs for testing with mock OAuth server
+    pub oauth_url: String,
+    pub token_url: String,
+    pub api_url: String,
 }
 
 impl GitHubOAuthConfig {
@@ -18,10 +22,21 @@ impl GitHubOAuthConfig {
         let redirect_uri =
             std::env::var("GITHUB_REDIRECT_URI").wrap_err("GITHUB_REDIRECT_URI must be set")?;
 
+        // Configurable URLs with defaults pointing to real GitHub
+        let oauth_url = std::env::var("GITHUB_OAUTH_URL")
+            .unwrap_or_else(|_| "https://github.com/login/oauth/authorize".to_string());
+        let token_url = std::env::var("GITHUB_TOKEN_URL")
+            .unwrap_or_else(|_| "https://github.com/login/oauth/access_token".to_string());
+        let api_url = std::env::var("GITHUB_API_URL")
+            .unwrap_or_else(|_| "https://api.github.com".to_string());
+
         Ok(Self {
             client_id,
             client_secret,
             redirect_uri,
+            oauth_url,
+            token_url,
+            api_url,
         })
     }
 }

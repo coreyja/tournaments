@@ -5,6 +5,7 @@ use axum::{
 };
 use color_eyre::eyre::{Context as _, eyre};
 use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT};
+use serde::Deserialize;
 
 use crate::{
     errors::{ServerError, ServerResult},
@@ -22,15 +23,20 @@ use crate::{
 
 use super::auth::CurrentSession;
 
-// Constants
-const GITHUB_OAUTH_URL: &str = "https://github.com/login/oauth/authorize";
-const GITHUB_TOKEN_URL: &str = "https://github.com/login/oauth/access_token";
-const GITHUB_API_URL: &str = "https://api.github.com";
+/// Query params for mock OAuth testing - forwarded to mock server
+#[derive(Debug, Deserialize, Default)]
+pub struct MockAuthParams {
+    pub mock_user_id: Option<i64>,
+    pub mock_user_login: Option<String>,
+    pub mock_user_name: Option<String>,
+    pub mock_user_email: Option<String>,
+}
 
 // Route handler for initiating GitHub OAuth flow
 pub async fn github_auth(
     State(state): State<AppState>,
     current_session: CurrentSession,
+    Query(mock_params): Query<MockAuthParams>,
 ) -> ServerResult<Redirect, StatusCode> {
     // Generate a random state for CSRF protection
     let oauth_state = format!("{}", uuid::Uuid::new_v4());
@@ -45,14 +51,28 @@ pub async fn github_auth(
     .wrap_err("Failed to store OAuth state in session")?;
 
     // Build OAuth URL using the AppState's github_oauth_config
-    let auth_url = format!(
+    let mut auth_url = format!(
         "{}?client_id={}&redirect_uri={}&state={}&scope={}",
-        GITHUB_OAUTH_URL,
+        state.github_oauth_config.oauth_url,
         state.github_oauth_config.client_id,
         urlencoding::encode(&state.github_oauth_config.redirect_uri),
         oauth_state,
         "user:email"
     );
+
+    // Forward mock params if present (for E2E testing with mock OAuth server)
+    if let Some(id) = mock_params.mock_user_id {
+        auth_url.push_str(&format!("&mock_user_id={}", id));
+    }
+    if let Some(ref login) = mock_params.mock_user_login {
+        auth_url.push_str(&format!("&mock_user_login={}", urlencoding::encode(login)));
+    }
+    if let Some(ref name) = mock_params.mock_user_name {
+        auth_url.push_str(&format!("&mock_user_name={}", urlencoding::encode(name)));
+    }
+    if let Some(ref email) = mock_params.mock_user_email {
+        auth_url.push_str(&format!("&mock_user_email={}", urlencoding::encode(email)));
+    }
 
     Ok(Redirect::to(&auth_url))
 }
@@ -92,7 +112,7 @@ pub async fn github_auth_callback(
     // Exchange code for access token
     let client = reqwest::Client::new();
     let token_response = client
-        .post(GITHUB_TOKEN_URL)
+        .post(&state.github_oauth_config.token_url)
         .json(&serde_json::json!({
             "client_id": state.github_oauth_config.client_id,
             "client_secret": state.github_oauth_config.client_secret,
@@ -121,7 +141,7 @@ pub async fn github_auth_callback(
     headers.insert(USER_AGENT, HeaderValue::from_static("tournaments-app"));
 
     let github_user = client
-        .get(format!("{}/user", GITHUB_API_URL))
+        .get(format!("{}/user", state.github_oauth_config.api_url))
         .headers(headers.clone())
         .send()
         .await

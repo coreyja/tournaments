@@ -8,7 +8,6 @@ pub mod auth;
 pub mod battlesnake;
 pub mod github_auth;
 pub mod game;
-pub mod test_auth;
 
 pub fn routes(app_state: AppState) -> axum::Router {
     axum::Router::new()
@@ -53,11 +52,6 @@ pub fn routes(app_state: AppState) -> axum::Router {
         .route(
             "/static/{*path}",
             get(crate::static_assets::serve_static_file),
-        )
-        // Test-only routes (only enabled when E2E_TEST_MODE is set)
-        .route(
-            "/test/auth/login/{session_id}",
-            get(test_auth::test_login),
         )
         // Add trace layer for debugging
         .layer(tower_http::trace::TraceLayer::new_for_http())

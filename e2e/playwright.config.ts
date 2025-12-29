@@ -1,7 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = process.env.PORT || '3000';
+const MOCK_GITHUB_PORT = process.env.MOCK_GITHUB_PORT || '8081';
 const BASE_URL = `http://localhost:${PORT}`;
+const MOCK_GITHUB_URL = `http://localhost:${MOCK_GITHUB_PORT}`;
 
 export default defineConfig({
   testDir: './tests',
@@ -22,15 +24,36 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: 'cargo run',
-    cwd: '..',
-    url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000, // 2 minutes for cargo build + server start
-    env: {
-      DATABASE_URL: 'postgresql://localhost:5432/tournaments_test',
-      E2E_TEST_MODE: '1', // Enable test-only routes
+  webServer: [
+    // Mock GitHub OAuth server
+    {
+      command: 'cargo run -p mock-github-oauth',
+      cwd: '..',
+      port: parseInt(MOCK_GITHUB_PORT),
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+      env: {
+        MOCK_GITHUB_PORT: MOCK_GITHUB_PORT,
+      },
     },
-  },
+    // Main application server
+    {
+      command: 'cargo run -p tournaments',
+      cwd: '..',
+      url: BASE_URL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+      env: {
+        DATABASE_URL: 'postgresql://localhost:5432/tournaments_test',
+        // Configure app to use mock OAuth server
+        GITHUB_OAUTH_URL: `${MOCK_GITHUB_URL}/login/oauth/authorize`,
+        GITHUB_TOKEN_URL: `${MOCK_GITHUB_URL}/login/oauth/access_token`,
+        GITHUB_API_URL: MOCK_GITHUB_URL,
+        // Dummy credentials (mock server doesn't validate these)
+        GITHUB_CLIENT_ID: 'mock_client_id',
+        GITHUB_CLIENT_SECRET: 'mock_client_secret',
+        GITHUB_REDIRECT_URI: `${BASE_URL}/auth/github/callback`,
+      },
+    },
+  ],
 });

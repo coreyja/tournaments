@@ -1,11 +1,11 @@
 import { test, expect } from '../fixtures/test';
 
 test.describe('Homepage - Authenticated User', () => {
-  test('displays user info when logged in', async ({ authenticatedPage, testUser }) => {
+  test('displays user info when logged in', async ({ authenticatedPage, mockUser }) => {
     await authenticatedPage.goto('/');
 
     // User's GitHub login name is displayed
-    await expect(authenticatedPage.getByText(`Welcome, ${testUser.github_login}!`)).toBeVisible();
+    await expect(authenticatedPage.getByText(`Welcome, ${mockUser.login}!`)).toBeVisible();
 
     // User's avatar is displayed (img with the avatar URL)
     const avatar = authenticatedPage.locator('img[alt="Avatar"]');

@@ -1,95 +1,88 @@
 import { test as base, expect, BrowserContext, Page } from '@playwright/test';
 import {
-  createTestUser,
-  createTestSession,
-  deleteTestUser,
+  deleteUserByGithubLogin,
   SESSION_COOKIE_NAME,
-  TestUser,
-  TestSession,
 } from './auth';
 import { closePool } from './db';
 
+/**
+ * Mock user configuration for OAuth flow.
+ * These values are passed to the mock OAuth server via query params.
+ */
+export interface MockUser {
+  id: number;
+  login: string;
+  name: string;
+  email: string;
+}
+
 export interface AuthFixtures {
-  /** The authenticated test user */
-  testUser: TestUser;
-  /** The test session linked to testUser */
-  testSession: TestSession;
-  /** Page that is already authenticated as testUser */
+  /** The mock user configuration used for OAuth */
+  mockUser: MockUser;
+  /** Page that is already authenticated via mock OAuth flow */
   authenticatedPage: Page;
 }
 
 /**
- * Extended test with authentication fixtures.
+ * Extended test with authentication fixtures using mock OAuth.
  *
  * Usage:
  * ```typescript
  * import { test, expect } from '../fixtures/test';
  *
- * test('authenticated test', async ({ authenticatedPage, testUser }) => {
+ * test('authenticated test', async ({ authenticatedPage, mockUser }) => {
  *   await authenticatedPage.goto('/');
- *   await expect(authenticatedPage.getByText(testUser.github_login)).toBeVisible();
+ *   await expect(authenticatedPage.getByText(mockUser.login)).toBeVisible();
  * });
  * ```
  */
 export const test = base.extend<AuthFixtures>({
-  // Create a test user - standalone fixture
-  testUser: async ({}, use) => {
-    const user = await createTestUser();
+  // Generate a unique mock user config for each test
+  mockUser: async ({}, use) => {
+    // Use random number + timestamp for uniqueness across parallel workers
+    const uniqueId = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+    const user: MockUser = {
+      id: uniqueId,
+      login: `testuser_${uniqueId}`,
+      name: `Test User ${uniqueId}`,
+      email: `test${uniqueId}@example.com`,
+    };
     await use(user);
-    // Cleanup after test
-    await deleteTestUser(user.user_id);
   },
 
-  // Create a session linked to the test user
-  testSession: async ({ testUser }, use) => {
-    const session = await createTestSession(testUser.user_id);
-    await use(session);
-    // Session is deleted when testUser is cleaned up (cascade)
-  },
-
-  // Create an authenticated page using the test login endpoint
-  authenticatedPage: async ({ browser, testUser, testSession }, use) => {
+  // Create an authenticated page via mock OAuth flow
+  authenticatedPage: async ({ browser, mockUser }, use) => {
     const context = await browser.newContext();
     const page = await context.newPage();
 
-    // Navigate to the test login endpoint - this will set the encrypted session cookie
-    // and redirect to the home page. The browser will follow the redirect and apply cookies.
-    // This endpoint is only available when E2E_TEST_MODE is set.
-    await page.goto(`/test/auth/login/${testSession.session_id}`, {
-      waitUntil: 'networkidle',
-    });
+    // First navigate to home to establish a session
+    await page.goto('/');
 
-    // Verify we ended up at a valid page (should have redirected to /)
-    const url = page.url();
-    if (url.includes('/test/auth/login/')) {
-      throw new Error(
-        `Failed to authenticate test user - still at login URL. ` +
-        `Make sure E2E_TEST_MODE=1 is set when running the server`
-      );
-    }
+    // Build the auth URL with mock user params
+    const authUrl = `/auth/github?mock_user_id=${mockUser.id}&mock_user_login=${encodeURIComponent(mockUser.login)}&mock_user_name=${encodeURIComponent(mockUser.name)}&mock_user_email=${encodeURIComponent(mockUser.email)}`;
+
+    // Navigate to auth endpoint - this will:
+    // 1. Redirect to mock OAuth server with mock params
+    // 2. Mock server immediately redirects back with code
+    // 3. App exchanges code for token and creates user
+    // 4. App redirects to home page
+    await page.goto(authUrl);
+
+    // Wait for the OAuth flow to complete and redirect back home
+    await page.waitForURL('/', { timeout: 10000 });
+
+    // Verify we're logged in by checking for the welcome message
+    await expect(page.getByText(`Welcome, ${mockUser.login}!`)).toBeVisible({ timeout: 5000 });
 
     await use(page);
 
-    // Cleanup
+    // Cleanup: close context and delete the user created by OAuth
     await context.close();
+    await deleteUserByGithubLogin(mockUser.login);
   },
 });
 
 export { expect };
-
-/**
- * Helper to authenticate a page using the test login endpoint.
- * Useful when you need to authenticate mid-test.
- */
-export async function authenticateAs(
-  page: Page,
-  sessionId: string
-): Promise<void> {
-  const response = await page.request.post(`/test/auth/login/${sessionId}`);
-  if (!response.ok()) {
-    throw new Error(`Failed to authenticate: ${response.status()}`);
-  }
-}
 
 /**
  * Helper to clear the session cookie (logout simulation).

@@ -136,3 +136,28 @@ export async function cleanupTestData(): Promise<void> {
   // Delete all test users
   await query(`DELETE FROM users WHERE github_login LIKE 'testuser_%'`);
 }
+
+/**
+ * Delete a user created via mock OAuth by their github_login.
+ * Used for cleanup after tests that use the mock OAuth flow.
+ */
+export async function deleteUserByGithubLogin(githubLogin: string): Promise<void> {
+  // Delete sessions first (foreign key constraint)
+  await query(`
+    DELETE FROM sessions
+    WHERE user_id IN (
+      SELECT user_id FROM users WHERE github_login = $1
+    )
+  `, [githubLogin]);
+
+  // Delete battlesnakes owned by user
+  await query(`
+    DELETE FROM battlesnakes
+    WHERE user_id IN (
+      SELECT user_id FROM users WHERE github_login = $1
+    )
+  `, [githubLogin]);
+
+  // Delete the user
+  await query('DELETE FROM users WHERE github_login = $1', [githubLogin]);
+}
