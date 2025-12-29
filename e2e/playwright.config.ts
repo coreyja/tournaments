@@ -30,6 +30,7 @@ export default defineConfig({
     timeout: 120 * 1000, // 2 minutes for cargo build + server start
     env: {
       DATABASE_URL: 'postgresql://localhost:5432/tournaments_test',
+      E2E_TEST_MODE: '1', // Enable test-only routes
     },
   },
 });
