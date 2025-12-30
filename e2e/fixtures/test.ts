@@ -20,6 +20,21 @@ export interface AuthFixtures {
   mockUser: MockUser;
   /** Page that is already authenticated via mock OAuth flow */
   authenticatedPage: Page;
+  /** Helper to login as a different user on a page */
+  loginAsUser: (page: Page, user: MockUser) => Promise<void>;
+}
+
+/**
+ * Generate a unique mock user for testing.
+ */
+export function createMockUser(prefix: string = 'testuser'): MockUser {
+  const uniqueId = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  return {
+    id: uniqueId,
+    login: `${prefix}_${uniqueId}`,
+    name: `Test User ${uniqueId}`,
+    email: `test${uniqueId}@example.com`,
+  };
 }
 
 /**
@@ -63,15 +78,72 @@ async function deleteUserByGithubLogin(githubLogin: string): Promise<void> {
 export const test = base.extend<AuthFixtures>({
   // Generate a unique mock user config for each test
   mockUser: async ({}, use) => {
-    // Use random number + timestamp for uniqueness across parallel workers
-    const uniqueId = Date.now() * 1000 + Math.floor(Math.random() * 1000);
-    const user: MockUser = {
-      id: uniqueId,
-      login: `testuser_${uniqueId}`,
-      name: `Test User ${uniqueId}`,
-      email: `test${uniqueId}@example.com`,
+    await use(createMockUser('testuser'));
+  },
+
+  // Helper to login as a different user on a page
+  loginAsUser: async ({}, use) => {
+    const usersToCleanup: string[] = [];
+
+    const loginFn = async (page: Page, user: MockUser) => {
+      // Track user for cleanup
+      usersToCleanup.push(user.login);
+
+      // Set up route handler for this user's OAuth flow
+      await page.route('**/auth/github', async (route) => {
+        const requestUrl = route.request().url();
+        const requestHeaders = route.request().headers();
+
+        const nativeResponse = await fetch(requestUrl, {
+          method: 'GET',
+          headers: requestHeaders,
+          redirect: 'manual',
+        });
+
+        const locationHeader = nativeResponse.headers.get('location');
+        if (locationHeader && locationHeader.includes('/login/oauth/authorize')) {
+          const parsedUrl = new URL(locationHeader);
+          const state = parsedUrl.searchParams.get('state');
+
+          if (state) {
+            await fetch(`${MOCK_GITHUB_URL}/_admin/set-user-for-state`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                state,
+                user: {
+                  id: user.id,
+                  login: user.login,
+                  name: user.name,
+                  email: user.email,
+                  avatar_url: 'https://example.com/avatar.png',
+                },
+              }),
+            });
+          }
+        }
+
+        await route.fulfill({
+          status: nativeResponse.status,
+          headers: Object.fromEntries(nativeResponse.headers.entries()),
+          body: await nativeResponse.text(),
+        });
+      });
+
+      // Navigate to auth endpoint
+      await page.goto('/auth/github');
+      await page.waitForURL('/', { timeout: 10000 });
+
+      // Unroute after login to avoid conflicts with future logins
+      await page.unroute('**/auth/github');
     };
-    await use(user);
+
+    await use(loginFn);
+
+    // Cleanup all users created via loginAsUser
+    for (const login of usersToCleanup) {
+      await deleteUserByGithubLogin(login);
+    }
   },
 
   // Create an authenticated page via mock OAuth flow
