@@ -4,18 +4,16 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Redirect},
 };
-use cja::server::cookies::CookieJar;
 use color_eyre::eyre::Context as _;
 use maud::html;
 use uuid::Uuid;
 
 use crate::{
-    components::flash::Flash,
     components::page_factory::PageFactory,
     errors::{ServerResult, WithStatus},
     models::battlesnake::{self, CreateBattlesnake, UpdateBattlesnake, Visibility},
     models::session,
-    routes::auth::CurrentUser,
+    routes::auth::{CurrentUser, CurrentUserWithSession},
     state::AppState,
 };
 
@@ -24,12 +22,14 @@ pub async fn list_battlesnakes(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     page_factory: PageFactory,
-    flash: Flash,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     // Get all battlesnakes for the current user
     let battlesnakes = battlesnake::get_battlesnakes_by_user_id(&state.db, user.user_id)
         .await
         .wrap_err("Failed to get battlesnakes")?;
+
+    // Use flash from page_factory (already extracted and cleared from DB)
+    let flash = page_factory.flash.clone();
 
     // Render the battlesnake list page
     Ok(page_factory.create_page_with_flash(
@@ -100,8 +100,10 @@ pub async fn list_battlesnakes(
 pub async fn new_battlesnake(
     CurrentUser(_): CurrentUser,
     page_factory: PageFactory,
-    flash: Flash,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
+    // Use flash from page_factory (already extracted and cleared from DB)
+    let flash = page_factory.flash.clone();
+
     Ok(page_factory.create_page_with_flash(
         "Add New Battlesnake".to_string(),
         Box::new(html! {
@@ -149,16 +151,15 @@ pub async fn new_battlesnake(
 // Handle the creation of a new battlesnake
 pub async fn create_battlesnake(
     State(state): State<AppState>,
-    CurrentUser(user): CurrentUser,
-    cookie_jar: CookieJar<AppState>,
+    CurrentUserWithSession { user, session }: CurrentUserWithSession,
     Form(create_data): Form<CreateBattlesnake>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
-    // Get the session ID from cookie
-    let session_id = cookie_jar
-        .get(session::SESSION_COOKIE_NAME)
-        .and_then(|c| uuid::Uuid::parse_str(c.value()).ok())
-        .ok_or_else(|| "No valid session found".to_string())
-        .with_status(StatusCode::BAD_REQUEST)?;
+    tracing::info!(
+        "create_battlesnake: session_id={}, user_id={}, has_flash={:?}",
+        session.session_id,
+        user.user_id,
+        session.flash_message.is_some()
+    );
 
     // Create the new battlesnake in the database
     let battlesnake_result =
@@ -167,14 +168,20 @@ pub async fn create_battlesnake(
     match battlesnake_result {
         Ok(_) => {
             // Flash message for success and redirect
-            session::set_flash_message(
+            let updated_session = session::set_flash_message(
                 &state.db,
-                session_id,
+                session.session_id,
                 "Battlesnake created successfully!".to_string(),
                 session::FLASH_TYPE_SUCCESS,
             )
             .await
             .wrap_err("Failed to set flash message")?;
+
+            tracing::info!(
+                "Flash set: session_id={}, flash_message={:?}",
+                updated_session.session_id,
+                updated_session.flash_message
+            );
 
             Ok(Redirect::to("/battlesnakes").into_response())
         }
@@ -184,7 +191,7 @@ pub async fn create_battlesnake(
                 // Set error flash message
                 session::set_flash_message(
                     &state.db,
-                    session_id,
+                    session.session_id,
                     err.to_string(),
                     session::FLASH_TYPE_ERROR,
                 )
@@ -207,7 +214,6 @@ pub async fn edit_battlesnake(
     CurrentUser(user): CurrentUser,
     Path(battlesnake_id): Path<Uuid>,
     page_factory: PageFactory,
-    flash: Flash,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     // Get the battlesnake by ID
     let battlesnake = battlesnake::get_battlesnake_by_id(&state.db, battlesnake_id)
@@ -221,6 +227,9 @@ pub async fn edit_battlesnake(
         return Err("You don't have permission to edit this battlesnake".to_string())
             .with_status(StatusCode::FORBIDDEN);
     }
+
+    // Use flash from page_factory (already extracted and cleared from DB)
+    let flash = page_factory.flash.clone();
 
     Ok(page_factory.create_page_with_flash(
         format!("Edit Battlesnake: {}", battlesnake.name),
@@ -269,18 +278,10 @@ pub async fn edit_battlesnake(
 // Handle the update of an existing battlesnake
 pub async fn update_battlesnake(
     State(state): State<AppState>,
-    CurrentUser(user): CurrentUser,
+    CurrentUserWithSession { user, session }: CurrentUserWithSession,
     Path(battlesnake_id): Path<Uuid>,
-    cookie_jar: CookieJar<AppState>,
     Form(update_data): Form<UpdateBattlesnake>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
-    // Get the session ID from cookie
-    let session_id = cookie_jar
-        .get(session::SESSION_COOKIE_NAME)
-        .and_then(|c| uuid::Uuid::parse_str(c.value()).ok())
-        .ok_or_else(|| "No valid session found".to_string())
-        .with_status(StatusCode::BAD_REQUEST)?;
-
     // First check if the battlesnake exists and belongs to the user
     let exists = battlesnake::belongs_to_user(&state.db, battlesnake_id, user.user_id)
         .await
@@ -305,7 +306,7 @@ pub async fn update_battlesnake(
             // Flash message for success and redirect
             session::set_flash_message(
                 &state.db,
-                session_id,
+                session.session_id,
                 "Battlesnake updated successfully!".to_string(),
                 session::FLASH_TYPE_SUCCESS,
             )
@@ -320,7 +321,7 @@ pub async fn update_battlesnake(
                 // Set error flash message
                 session::set_flash_message(
                     &state.db,
-                    session_id,
+                    session.session_id,
                     err.to_string(),
                     session::FLASH_TYPE_ERROR,
                 )
@@ -340,17 +341,9 @@ pub async fn update_battlesnake(
 // Handle the deletion of a battlesnake
 pub async fn delete_battlesnake(
     State(state): State<AppState>,
-    CurrentUser(user): CurrentUser,
+    CurrentUserWithSession { user, session }: CurrentUserWithSession,
     Path(battlesnake_id): Path<Uuid>,
-    cookie_jar: CookieJar<AppState>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
-    // Get the session ID from cookie
-    let session_id = cookie_jar
-        .get(session::SESSION_COOKIE_NAME)
-        .and_then(|c| uuid::Uuid::parse_str(c.value()).ok())
-        .ok_or_else(|| "No valid session found".to_string())
-        .with_status(StatusCode::BAD_REQUEST)?;
-
     // First check if the battlesnake exists and belongs to the user
     let exists = battlesnake::belongs_to_user(&state.db, battlesnake_id, user.user_id)
         .await
@@ -369,7 +362,7 @@ pub async fn delete_battlesnake(
     // Flash message for success and redirect
     session::set_flash_message(
         &state.db,
-        session_id,
+        session.session_id,
         "Battlesnake deleted successfully!".to_string(),
         session::FLASH_TYPE_SUCCESS,
     )

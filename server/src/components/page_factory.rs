@@ -11,7 +11,8 @@ use crate::{
 /// This extractor is responsible for creating Page instances with all necessary components
 /// like flash messages. It extracts FlashMessage and uses it when creating pages.
 pub struct PageFactory {
-    flash: Flash,
+    /// The flash message extracted from the session (already cleared from DB)
+    pub flash: Flash,
 }
 
 impl PageFactory {
