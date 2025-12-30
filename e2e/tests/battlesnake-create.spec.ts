@@ -40,6 +40,23 @@ test.describe('Create Battlesnake', () => {
     await expect(authenticatedPage.getByText(uniqueName)).toBeVisible();
   });
 
+  test('shows success flash message after creating battlesnake', async ({ authenticatedPage }) => {
+    const uniqueName = `Flash Test Snake ${Date.now()}`;
+
+    await authenticatedPage.goto('/battlesnakes/new');
+    await authenticatedPage.getByLabel('Name').fill(uniqueName);
+    await authenticatedPage.getByLabel('URL').fill('https://example.com/flash-test');
+    await authenticatedPage.getByLabel('Visibility').selectOption('public');
+    await authenticatedPage.getByRole('button', { name: 'Create Battlesnake' }).click();
+
+    await expect(authenticatedPage).toHaveURL('/battlesnakes');
+
+    // Should see success flash message (check for the alert container with success styling)
+    const successAlert = authenticatedPage.locator('.alert-success');
+    await expect(successAlert).toBeVisible();
+    await expect(successAlert).toContainText('Battlesnake created successfully!');
+  });
+
   test('new form requires authentication', async ({ page }) => {
     // Without authentication, should get 401
     const response = await page.goto('/battlesnakes/new');
