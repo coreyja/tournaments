@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/test';
+import { test, expect, createMockUser } from '../fixtures/test';
 
 test.describe('Battlesnake Validation', () => {
   test('cannot create battlesnake with duplicate name', async ({ authenticatedPage }) => {
@@ -81,9 +81,8 @@ test.describe('Battlesnake Validation', () => {
     await expect(authenticatedPage.getByText(reuseName)).toBeVisible();
   });
 
-  test('different users can have same snake name', async ({ authenticatedPage, browser }) => {
+  test('different users can have same snake name', async ({ authenticatedPage, loginAsUser }) => {
     const sharedName = `Shared Name Snake ${Date.now()}`;
-    const MOCK_GITHUB_URL = `http://localhost:${process.env.MOCK_GITHUB_PORT || '8081'}`;
 
     // First user creates a snake
     await authenticatedPage.goto('/battlesnakes/new');
@@ -97,52 +96,9 @@ test.describe('Battlesnake Validation', () => {
     // Log out first user
     await authenticatedPage.goto('/auth/logout');
 
-    // Create second user with different ID
-    const secondUserId = Date.now() * 1000 + Math.floor(Math.random() * 1000) + 1;
-    const secondUser = {
-      id: secondUserId,
-      login: `testuser2_${secondUserId}`,
-      name: `Test User 2`,
-      email: `test2_${secondUserId}@example.com`,
-      avatar_url: 'https://example.com/avatar2.png',
-    };
-
-    // Set up route handler for second user's OAuth flow
-    await authenticatedPage.route('**/auth/github', async (route) => {
-      const requestUrl = route.request().url();
-      const requestHeaders = route.request().headers();
-
-      const nativeResponse = await fetch(requestUrl, {
-        method: 'GET',
-        headers: requestHeaders,
-        redirect: 'manual',
-      });
-
-      const locationHeader = nativeResponse.headers.get('location');
-      if (locationHeader && locationHeader.includes('/login/oauth/authorize')) {
-        const parsedUrl = new URL(locationHeader);
-        const state = parsedUrl.searchParams.get('state');
-
-        if (state) {
-          await fetch(`${MOCK_GITHUB_URL}/_admin/set-user-for-state`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ state, user: secondUser }),
-          });
-        }
-      }
-
-      await route.fulfill({
-        status: nativeResponse.status,
-        headers: Object.fromEntries(nativeResponse.headers.entries()),
-        body: await nativeResponse.text(),
-      });
-    });
-
     // Log in as second user
-    await authenticatedPage.goto('/auth/github');
-    await authenticatedPage.waitForURL('/', { timeout: 10000 });
-    await expect(authenticatedPage.getByText(`Welcome, ${secondUser.login}!`)).toBeVisible({ timeout: 5000 });
+    const secondUser = createMockUser('user2');
+    await loginAsUser(authenticatedPage, secondUser);
 
     // Second user creates snake with same name - should succeed
     await authenticatedPage.goto('/battlesnakes/new');
