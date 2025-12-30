@@ -2,7 +2,10 @@ pub mod routes;
 pub mod state;
 pub mod types;
 
-use axum::{routing::{get, post}, Router};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 use state::MockOAuthState;
 
 pub use types::MockUserConfig;
@@ -17,7 +20,10 @@ pub fn create_router() -> Router {
         .route("/login/oauth/access_token", post(routes::access_token))
         .route("/user", get(routes::get_user))
         // Admin endpoint for test control
-        .route("/_admin/set-user-for-state", post(routes::set_user_for_state))
+        .route(
+            "/_admin/set-user-for-state",
+            post(routes::set_user_for_state),
+        )
         .with_state(state)
 }
 

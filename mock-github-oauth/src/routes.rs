@@ -1,8 +1,8 @@
 use axum::{
+    Json,
     extract::{Query, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Redirect},
-    Json,
 };
 
 use crate::{state::MockOAuthState, types::*};
@@ -22,9 +22,7 @@ pub async fn set_user_for_state(
         "Pre-registering user for OAuth state"
     );
 
-    state
-        .pre_register_user(request.state, request.user)
-        .await;
+    state.pre_register_user(request.state, request.user).await;
 
     StatusCode::OK
 }
@@ -79,7 +77,10 @@ pub async fn authorize(
     state.store_code(code.clone(), user).await;
 
     // Redirect back to the app's callback
-    let redirect_url = format!("{}?code={}&state={}", params.redirect_uri, code, params.state);
+    let redirect_url = format!(
+        "{}?code={}&state={}",
+        params.redirect_uri, code, params.state
+    );
 
     tracing::info!(redirect_url = %redirect_url, "Redirecting to callback");
 
@@ -165,7 +166,10 @@ pub async fn get_user(
     let token = headers
         .get("authorization")
         .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.strip_prefix("Bearer ").or_else(|| s.strip_prefix("bearer ")))
+        .and_then(|s| {
+            s.strip_prefix("Bearer ")
+                .or_else(|| s.strip_prefix("bearer "))
+        })
         .map(|s| s.to_string());
 
     match token {

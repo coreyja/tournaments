@@ -9,8 +9,8 @@ use maud::html;
 use uuid::Uuid;
 
 use crate::{
-    components::page_factory::PageFactory,
     components::flash::Flash,
+    components::page_factory::PageFactory,
     errors::{ServerResult, WithStatus},
     models::game_battlesnake,
     routes::auth::CurrentUser,
@@ -31,7 +31,7 @@ pub async fn view_game(
         .await
         .wrap_err("Failed to get game details")
         .with_status(StatusCode::NOT_FOUND)?;
-    
+
     // Render the game details page
     Ok(page_factory.create_page_with_flash(
         format!("Game Details: {}", game_id),
@@ -57,7 +57,7 @@ pub async fn view_game(
                 }
 
                 h3 { "Game Results" }
-                
+
                 div class="table-responsive" {
                     table class="table table-striped" {
                         thead {
@@ -85,7 +85,7 @@ pub async fn view_game(
                                     }
                                     td { (battlesnake.name) }
                                     td { "User " (battlesnake.user_id) }
-                                    td { 
+                                    td {
                                         a href=(battlesnake.url) target="_blank" { (battlesnake.url) }
                                     }
                                 }
@@ -117,7 +117,7 @@ pub async fn list_games(
     let games_with_winners = crate::models::game::get_all_games_with_winners(&state.db)
         .await
         .wrap_err("Failed to get games list with winners")?;
-    
+
     // Render the games list page
     Ok(page_factory.create_page_with_flash(
         "All Games".to_string(),
@@ -186,4 +186,4 @@ pub async fn list_games(
         }),
         flash,
     ))
-} 
+}

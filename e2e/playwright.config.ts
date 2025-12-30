@@ -4,6 +4,7 @@ const PORT = process.env.PORT || '3000';
 const MOCK_GITHUB_PORT = process.env.MOCK_GITHUB_PORT || '8081';
 const BASE_URL = `http://localhost:${PORT}`;
 const MOCK_GITHUB_URL = `http://localhost:${MOCK_GITHUB_PORT}`;
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://localhost:5432/tournaments_test';
 
 export default defineConfig({
   testDir: './tests',
@@ -44,7 +45,7 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
       env: {
-        DATABASE_URL: 'postgresql://localhost:5432/tournaments_test',
+        DATABASE_URL: DATABASE_URL,
         // Configure app to use mock OAuth server
         GITHUB_OAUTH_URL: `${MOCK_GITHUB_URL}/login/oauth/authorize`,
         GITHUB_TOKEN_URL: `${MOCK_GITHUB_URL}/login/oauth/access_token`,

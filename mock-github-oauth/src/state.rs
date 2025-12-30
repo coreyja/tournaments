@@ -40,7 +40,10 @@ impl MockOAuthState {
     pub async fn exchange_code(&self, code: &str) -> Option<(String, MockUserConfig)> {
         let user = self.codes.write().await.remove(code)?;
         let token = format!("mock_token_{}", uuid::Uuid::new_v4());
-        self.tokens.write().await.insert(token.clone(), user.clone());
+        self.tokens
+            .write()
+            .await
+            .insert(token.clone(), user.clone());
         Some((token, user))
     }
 

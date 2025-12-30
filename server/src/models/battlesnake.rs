@@ -8,7 +8,9 @@ use uuid::Uuid;
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Type)]
 #[sqlx(type_name = "text", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum Visibility {
+    #[default]
     Public,
     Private,
 }
@@ -35,11 +37,6 @@ impl FromStr for Visibility {
 }
 
 // Default implementation for Visibility - default to Public
-impl Default for Visibility {
-    fn default() -> Self {
-        Visibility::Public
-    }
-}
 
 // Battlesnake model for our application
 #[derive(Debug, Serialize, Deserialize)]
@@ -167,15 +164,14 @@ pub async fn create_battlesnake(
         Ok(battlesnake) => Ok(battlesnake),
         Err(err) => {
             // Check if this is a unique violation error
-            if let Some(db_err) = err.as_database_error() {
-                if let Some(constraint) = db_err.constraint() {
-                    if constraint == "unique_battlesnake_name_per_user" {
-                        return Err(cja::color_eyre::eyre::eyre!(
-                            "You already have a battlesnake named '{}'. Please choose a different name.",
-                            data.name
-                        ));
-                    }
-                }
+            if let Some(db_err) = err.as_database_error()
+                && let Some(constraint) = db_err.constraint()
+                && constraint == "unique_battlesnake_name_per_user"
+            {
+                return Err(cja::color_eyre::eyre::eyre!(
+                    "You already have a battlesnake named '{}'. Please choose a different name.",
+                    data.name
+                ));
             }
 
             // If it's not a unique constraint violation, wrap with a generic error
@@ -226,15 +222,14 @@ pub async fn update_battlesnake(
         Ok(battlesnake) => Ok(battlesnake),
         Err(err) => {
             // Check if this is a unique violation error
-            if let Some(db_err) = err.as_database_error() {
-                if let Some(constraint) = db_err.constraint() {
-                    if constraint == "unique_battlesnake_name_per_user" {
-                        return Err(cja::color_eyre::eyre::eyre!(
-                            "You already have a battlesnake named '{}'. Please choose a different name.",
-                            data.name
-                        ));
-                    }
-                }
+            if let Some(db_err) = err.as_database_error()
+                && let Some(constraint) = db_err.constraint()
+                && constraint == "unique_battlesnake_name_per_user"
+            {
+                return Err(cja::color_eyre::eyre::eyre!(
+                    "You already have a battlesnake named '{}'. Please choose a different name.",
+                    data.name
+                ));
             }
 
             // If it's not a unique constraint violation, wrap with a generic error

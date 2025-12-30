@@ -6,8 +6,8 @@ use crate::{components::page_factory::PageFactory, errors::ServerResult, state::
 // Include route modules
 pub mod auth;
 pub mod battlesnake;
-pub mod github_auth;
 pub mod game;
+pub mod github_auth;
 
 pub fn routes(app_state: AppState) -> axum::Router {
     axum::Router::new()
@@ -29,7 +29,10 @@ pub fn routes(app_state: AppState) -> axum::Router {
             "/battlesnakes",
             axum::routing::post(battlesnake::create_battlesnake),
         )
-        .route("/battlesnakes/{id}/edit", get(battlesnake::edit_battlesnake))
+        .route(
+            "/battlesnakes/{id}/edit",
+            get(battlesnake::edit_battlesnake),
+        )
         .route(
             "/battlesnakes/{id}/update",
             axum::routing::post(battlesnake::update_battlesnake),
@@ -43,10 +46,22 @@ pub fn routes(app_state: AppState) -> axum::Router {
         .route("/games/new", get(game::new_game))
         .route("/games/{id}", get(game::view_game))
         .route("/games/flow/{id}", get(game::show_game_flow))
-        .route("/games/flow/{id}/reset", axum::routing::post(game::reset_snake_selections))
-        .route("/games/flow/{id}/create", axum::routing::post(game::create_game))
-        .route("/games/flow/{id}/add-snake/{snake_id}", axum::routing::post(game::add_battlesnake))
-        .route("/games/flow/{id}/remove-snake/{snake_id}", axum::routing::post(game::remove_battlesnake))
+        .route(
+            "/games/flow/{id}/reset",
+            axum::routing::post(game::reset_snake_selections),
+        )
+        .route(
+            "/games/flow/{id}/create",
+            axum::routing::post(game::create_game),
+        )
+        .route(
+            "/games/flow/{id}/add-snake/{snake_id}",
+            axum::routing::post(game::add_battlesnake),
+        )
+        .route(
+            "/games/flow/{id}/remove-snake/{snake_id}",
+            axum::routing::post(game::remove_battlesnake),
+        )
         .route("/games/flow/{id}/search", get(game::search_battlesnakes))
         // Static files
         .route(
@@ -127,7 +142,7 @@ async fn profile_page(
                         p { "Account created: " (user.created_at.format("%Y-%m-%d %H:%M:%S")) }
                         p { "Last updated: " (user.updated_at.format("%Y-%m-%d %H:%M:%S")) }
                     }
-                    
+
                     div class="profile-actions" style="margin-top: 20px;" {
                         h3 { "Your Battlesnakes" }
                         p { "Manage your Battlesnake collection for tournaments." }

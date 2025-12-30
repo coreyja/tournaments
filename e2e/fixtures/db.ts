@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 
-// Always use the test database for e2e tests
-const TEST_DATABASE_URL = 'postgresql://localhost:5432/tournaments_test';
+// Use DATABASE_URL from environment or fall back to local test database
+const TEST_DATABASE_URL = process.env.DATABASE_URL || 'postgresql://localhost:5432/tournaments_test';
 
 let pool: Pool | null = null;
 

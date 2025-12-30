@@ -376,6 +376,7 @@ dependencies = [
 [[package]]
 name = "cja"
 version = "0.0.0"
+source = "git+https://github.com/coreyja/cja?branch=main#7b4041337fbbce329d44805ceb58dd4af39dda60"
 dependencies = [
  "async-trait",
  "axum",
@@ -4284,6 +4285,7 @@ dependencies = [
 [[package]]
 name = "tracing-common"
 version = "0.1.0"
+source = "git+https://github.com/coreyja/cja?branch=main#7b4041337fbbce329d44805ceb58dd4af39dda60"
 dependencies = [
  "color-eyre",
  "opentelemetry 0.23.0",
