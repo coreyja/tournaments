@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     http::{HeaderValue, header::SET_COOKIE, request::Parts},
     response::{IntoResponse, Redirect, Response},
@@ -96,7 +95,6 @@ impl Flash {
     }
 }
 
-#[async_trait]
 impl FromRequestParts<AppState> for Flash {
     type Rejection = Response;
 

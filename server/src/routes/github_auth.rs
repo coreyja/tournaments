@@ -22,11 +22,6 @@ use crate::{
 
 use super::auth::CurrentSession;
 
-// Constants
-const GITHUB_OAUTH_URL: &str = "https://github.com/login/oauth/authorize";
-const GITHUB_TOKEN_URL: &str = "https://github.com/login/oauth/access_token";
-const GITHUB_API_URL: &str = "https://api.github.com";
-
 // Route handler for initiating GitHub OAuth flow
 pub async fn github_auth(
     State(state): State<AppState>,
@@ -47,7 +42,7 @@ pub async fn github_auth(
     // Build OAuth URL using the AppState's github_oauth_config
     let auth_url = format!(
         "{}?client_id={}&redirect_uri={}&state={}&scope={}",
-        GITHUB_OAUTH_URL,
+        state.github_oauth_config.oauth_url,
         state.github_oauth_config.client_id,
         urlencoding::encode(&state.github_oauth_config.redirect_uri),
         oauth_state,
@@ -92,7 +87,7 @@ pub async fn github_auth_callback(
     // Exchange code for access token
     let client = reqwest::Client::new();
     let token_response = client
-        .post(GITHUB_TOKEN_URL)
+        .post(&state.github_oauth_config.token_url)
         .json(&serde_json::json!({
             "client_id": state.github_oauth_config.client_id,
             "client_secret": state.github_oauth_config.client_secret,
@@ -121,7 +116,7 @@ pub async fn github_auth_callback(
     headers.insert(USER_AGENT, HeaderValue::from_static("tournaments-app"));
 
     let github_user = client
-        .get(format!("{}/user", GITHUB_API_URL))
+        .get(format!("{}/user", state.github_oauth_config.api_url))
         .headers(headers.clone())
         .send()
         .await

@@ -1,0 +1,48 @@
+import { test, expect } from '../fixtures/test';
+
+test.describe('Create Battlesnake', () => {
+  test('can create a battlesnake with valid data', async ({ authenticatedPage }) => {
+    const uniqueName = `Test Snake ${Date.now()}`;
+    const snakeUrl = 'https://example.com/my-snake';
+
+    // Navigate to create form
+    await authenticatedPage.goto('/battlesnakes/new');
+    await expect(authenticatedPage.getByRole('heading', { name: 'Add New Battlesnake' })).toBeVisible();
+
+    // Fill in the form
+    await authenticatedPage.getByLabel('Name').fill(uniqueName);
+    await authenticatedPage.getByLabel('URL').fill(snakeUrl);
+    await authenticatedPage.getByLabel('Visibility').selectOption('public');
+
+    // Submit the form
+    await authenticatedPage.getByRole('button', { name: 'Create Battlesnake' }).click();
+
+    // Should redirect to /battlesnakes
+    await expect(authenticatedPage).toHaveURL('/battlesnakes');
+
+    // New battlesnake should appear in the list
+    await expect(authenticatedPage.getByText(uniqueName)).toBeVisible();
+  });
+
+  test('can create a private battlesnake', async ({ authenticatedPage }) => {
+    const uniqueName = `Private Snake ${Date.now()}`;
+    const snakeUrl = 'https://example.com/private-snake';
+
+    await authenticatedPage.goto('/battlesnakes/new');
+
+    await authenticatedPage.getByLabel('Name').fill(uniqueName);
+    await authenticatedPage.getByLabel('URL').fill(snakeUrl);
+    await authenticatedPage.getByLabel('Visibility').selectOption('private');
+
+    await authenticatedPage.getByRole('button', { name: 'Create Battlesnake' }).click();
+
+    await expect(authenticatedPage).toHaveURL('/battlesnakes');
+    await expect(authenticatedPage.getByText(uniqueName)).toBeVisible();
+  });
+
+  test('new form requires authentication', async ({ page }) => {
+    // Without authentication, should get 401
+    const response = await page.goto('/battlesnakes/new');
+    expect(response?.status()).toBe(401);
+  });
+});

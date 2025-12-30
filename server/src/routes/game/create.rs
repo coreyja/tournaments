@@ -1,8 +1,8 @@
 use axum::{
+    Form,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Redirect},
-    Form,
 };
 use axum_macros::debug_handler;
 use color_eyre::eyre::Context as _;
@@ -12,12 +12,12 @@ use std::str::FromStr;
 use uuid::Uuid;
 
 use crate::{
-    components::page_factory::PageFactory,
     components::flash::Flash,
+    components::page_factory::PageFactory,
     errors::{ServerResult, WithStatus},
     models::flow::GameCreationFlow,
-    models::session,
     models::game::{GameBoardSize, GameType},
+    models::session,
     routes::auth::{CurrentUser, CurrentUserWithSession},
     state::AppState,
 };
@@ -32,7 +32,7 @@ pub async fn new_game(
     let flow = GameCreationFlow::create_for_user(&state.db, user.user_id)
         .await
         .wrap_err("Failed to create game flow")?;
-    
+
     // Redirect to the flow page
     Ok(Redirect::to(&format!("/games/flow/{}", flow.flow_id)).into_response())
 }
@@ -52,14 +52,16 @@ pub async fn show_game_flow(
         .wrap_err("Failed to get game flow")?
         .ok_or_else(|| "Game flow not found".to_string())
         .with_status(StatusCode::NOT_FOUND)?;
-    
+
     // Get user's battlesnakes
-    let user_battlesnakes = flow.get_user_battlesnakes(&state.db)
+    let user_battlesnakes = flow
+        .get_user_battlesnakes(&state.db)
         .await
         .wrap_err("Failed to get user's battlesnakes")?;
-    
+
     // Get the selected battlesnakes
-    let selected_battlesnakes = flow.get_selected_battlesnakes(&state.db)
+    let selected_battlesnakes = flow
+        .get_selected_battlesnakes(&state.db)
         .await
         .wrap_err("Failed to get selected battlesnakes")?;
 
@@ -95,12 +97,12 @@ pub async fn show_game_flow(
                             option value="Snail Mode" selected[flow.game_type == GameType::SnailMode] { "Snail Mode" }
                         }
                     }
-                    
+
                     // Display current selection count if any
                     @if flow.selected_count() > 0 {
                         div class="alert alert-info mb-3" {
                             p { "You have selected " (flow.selected_count()) " of 4 possible battlesnakes." }
-                            
+
                             // Display the selected battlesnakes
                             @if !selected_battlesnakes.is_empty() {
                                 div class="mt-2" {
@@ -117,10 +119,10 @@ pub async fn show_game_flow(
                                     }
                                 }
                             }
-                            
+
                             div class="mt-3" {
                                 button type="submit" class="btn btn-success me-2" { "Create Game" }
-                                
+
                                 form action={"/games/flow/"(flow_id)"/reset"} method="post" class="d-inline" {
                                     button type="submit" class="btn btn-secondary" { "Reset Selection" }
                                 }
@@ -134,7 +136,7 @@ pub async fn show_game_flow(
                 }
 
                 h2 class="mt-4" { "Your Battlesnakes" }
-                
+
                 @if user_battlesnakes.is_empty() {
                     div class="alert alert-warning" {
                         p { "You don't have any battlesnakes yet." }
@@ -147,7 +149,7 @@ pub async fn show_game_flow(
                                 div class=(format!("card h-100 {}", if flow.is_battlesnake_selected(&snake.battlesnake_id) { "border-primary" } else { "" })) {
                                     div class="card-body" {
                                         h5 class="card-title" { (snake.name) }
-                                        p class="card-text" { 
+                                        p class="card-text" {
                                             a href=(snake.url) target="_blank" { (snake.url) }
                                         }
                                     }
@@ -169,7 +171,7 @@ pub async fn show_game_flow(
                 }
 
                 h2 class="mt-4" { "Search for Public Battlesnakes" }
-                
+
                 form action={"/games/flow/"(flow_id)"/search"} method="get" class="mb-3" {
                     div class="input-group" {
                         input type="text" name="q" class="form-control" placeholder="Search by name..." value=(flow.search_query.as_deref().unwrap_or("")) {}
@@ -214,15 +216,15 @@ pub async fn reset_snake_selections(
         .wrap_err("Failed to get game flow")?
         .ok_or_else(|| "Game flow not found".to_string())
         .with_status(StatusCode::NOT_FOUND)?;
-    
+
     // Clear the selections
     flow.selected_battlesnake_ids.clear();
-    
+
     // Update the flow
     flow.update(&state.db)
         .await
         .wrap_err("Failed to update game flow")?;
-    
+
     // Redirect back to the flow page
     Ok(Redirect::to(&format!("/games/flow/{}", flow_id)).into_response())
 }
@@ -240,30 +242,28 @@ pub async fn add_battlesnake(
         .wrap_err("Failed to get game flow")?
         .ok_or_else(|| "Game flow not found".to_string())
         .with_status(StatusCode::NOT_FOUND)?;
-    
+
     // Add the battlesnake
     let added = flow.add_battlesnake(battlesnake_id);
-    
+
     // Set appropriate flash message if the add fails
-    if !added {
-        if flow.selected_count() >= 4 {
-            // Set an error flash message in the session            
-            session::set_flash_message(
-                &state.db,
-                session.session_id,
-                "Maximum of 4 battlesnakes allowed".to_string(),
-                session::FLASH_TYPE_WARNING,
-            )
-            .await
-            .wrap_err("Failed to set flash message")?;
-        }
+    if !added && flow.selected_count() >= 4 {
+        // Set an error flash message in the session
+        session::set_flash_message(
+            &state.db,
+            session.session_id,
+            "Maximum of 4 battlesnakes allowed".to_string(),
+            session::FLASH_TYPE_WARNING,
+        )
+        .await
+        .wrap_err("Failed to set flash message")?;
     }
-    
+
     // Update the flow
     flow.update(&state.db)
         .await
         .wrap_err("Failed to update game flow")?;
-    
+
     // Redirect back to the flow page
     Ok(Redirect::to(&format!("/games/flow/{}", flow_id)).into_response())
 }
@@ -281,15 +281,15 @@ pub async fn remove_battlesnake(
         .wrap_err("Failed to get game flow")?
         .ok_or_else(|| "Game flow not found".to_string())
         .with_status(StatusCode::NOT_FOUND)?;
-    
+
     // Remove the battlesnake
     flow.remove_battlesnake(battlesnake_id);
-    
+
     // Update the flow
     flow.update(&state.db)
         .await
         .wrap_err("Failed to update game flow")?;
-    
+
     // Redirect back to the flow page
     Ok(Redirect::to(&format!("/games/flow/{}", flow_id)).into_response())
 }
@@ -313,15 +313,15 @@ pub async fn search_battlesnakes(
         .wrap_err("Failed to get game flow")?
         .ok_or_else(|| "Game flow not found".to_string())
         .with_status(StatusCode::NOT_FOUND)?;
-    
+
     // Update search query
     flow.search_query = query.q;
-    
+
     // Update the flow
     flow.update(&state.db)
         .await
         .wrap_err("Failed to update game flow")?;
-    
+
     // Redirect back to the flow page
     Ok(Redirect::to(&format!("/games/flow/{}", flow_id)).into_response())
 }
@@ -340,35 +340,36 @@ pub async fn create_game(
         .wrap_err("Failed to get game flow")?
         .ok_or_else(|| "Game flow not found".to_string())
         .with_status(StatusCode::NOT_FOUND)?;
-    
+
     // Update with user's selections if provided
     if let Ok(board_size) = GameBoardSize::from_str(&data.board_size) {
         flow.board_size = board_size;
     }
-    
+
     if let Ok(game_type) = GameType::from_str(&data.game_type) {
         flow.game_type = game_type;
     }
-    
+
     // Update the flow with settings changes
     flow.update(&state.db)
         .await
         .wrap_err("Failed to update game flow")?;
-    
+
     // Validate and create the game
     let validate_result = flow.validate();
     match validate_result {
         Ok(_) => {
             // Create the game
-            let game_id = flow.create_game(&state.db)
+            let game_id = flow
+                .create_game(&state.db)
                 .await
                 .wrap_err("Failed to create game")?;
-            
+
             // Delete the flow
             GameCreationFlow::delete(&state.db, flow_id, user.user_id)
                 .await
                 .wrap_err("Failed to delete game flow")?;
-            
+
             // Set a success flash message in the session
             session::set_flash_message(
                 &state.db,
@@ -378,10 +379,10 @@ pub async fn create_game(
             )
             .await
             .wrap_err("Failed to set flash message")?;
-            
+
             // Redirect to the game details page
             Ok(Redirect::to(&format!("/games/{}", game_id)).into_response())
-        },
+        }
         Err(error) => {
             // Set an error flash message in the session
             session::set_flash_message(
@@ -392,7 +393,7 @@ pub async fn create_game(
             )
             .await
             .wrap_err("Failed to set flash message")?;
-            
+
             // Redirect back to the flow page
             Ok(Redirect::to(&format!("/games/flow/{}", flow_id)).into_response())
         }
@@ -402,10 +403,10 @@ pub async fn create_game(
 // Helper function to render search results
 async fn render_search_results(flow: &GameCreationFlow, db: &sqlx::PgPool) -> maud::Markup {
     // Execute the search
-    let search_results = match flow.search_public_battlesnakes(db).await {
-        Ok(results) => results,
-        Err(_) => vec![], // On error, show empty results
-    };
+    let search_results = flow
+        .search_public_battlesnakes(db)
+        .await
+        .unwrap_or_default();
 
     html! {
         @if search_results.is_empty() {
@@ -441,4 +442,4 @@ async fn render_search_results(flow: &GameCreationFlow, db: &sqlx::PgPool) -> ma
             }
         }
     }
-} 
+}

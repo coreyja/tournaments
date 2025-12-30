@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rustfmt:
+    uses: ./.github/workflows/rustfmt.yml
+
+  clippy:
+    uses: ./.github/workflows/clippy.yml
+
+  rust-tests:
+    uses: ./.github/workflows/rust-tests.yml
+
+  e2e:
+    uses: ./.github/workflows/e2e.yml

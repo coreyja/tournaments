@@ -85,3 +85,44 @@ The application will be available at http://localhost:3000
 - Update query cache: `DATABASE_URL="postgresql://localhost:5432/tournaments" cargo sqlx prepare --workspace`
 
 Note: Always ensure the DATABASE_URL environment variable is set when working with SQLx commands, especially for migration reversion: `DATABASE_URL="postgresql://localhost:5432/tournaments" cargo sqlx mig revert`
+
+### E2E Testing
+
+End-to-end tests use Playwright and are located in the `e2e/` directory.
+
+#### Setup
+
+```bash
+cd e2e
+npm install
+npx playwright install chromium
+```
+
+#### Test Database
+
+E2E tests use a separate database (`tournaments_test`). Create it before running tests:
+
+```bash
+DATABASE_URL="postgresql://localhost:5432/tournaments_test" cargo sqlx db create
+DATABASE_URL="postgresql://localhost:5432/tournaments_test" cargo sqlx migrate run
+```
+
+#### Running Tests
+
+From the `e2e/` directory:
+
+```bash
+# Run tests headless (default)
+npm test
+
+# Run tests with browser visible
+npm run test:headed
+
+# Run tests in debug mode (step through)
+npm run test:debug
+
+# Run tests in UI mode (interactive)
+npm run test:ui
+```
+
+Note: Tests automatically start the server using `cargo run` with the test database. The first run may take longer due to compilation.

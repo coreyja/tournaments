@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            g.game_id,\n            g.board_size,\n            g.game_type,\n            g.status,\n            g.created_at,\n            g.updated_at,\n            b.name as winner_name\n        FROM games g\n        LEFT JOIN game_battlesnakes gb ON g.game_id = gb.game_id AND gb.placement = 1\n        LEFT JOIN battlesnakes b ON gb.battlesnake_id = b.battlesnake_id\n        ORDER BY g.created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "game_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "board_size",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "game_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "winner_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c832450edb5f9971c53eccbe93676a3bdd85623d6b437d06c7e4d2e8d0d3b566"
+}

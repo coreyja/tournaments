@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            g.game_id,\n            g.board_size,\n            g.game_type,\n            g.created_at,\n            g.updated_at\n        FROM games g\n        JOIN game_battlesnakes gb ON g.game_id = gb.game_id\n        WHERE gb.battlesnake_id = $1\n        ORDER BY g.created_at DESC\n        ",
+  "query": "\n        UPDATE games\n        SET status = $2\n        WHERE game_id = $1\n        RETURNING\n            game_id,\n            board_size,\n            game_type,\n            status,\n            created_at,\n            updated_at\n        ",
   "describe": {
     "columns": [
       {
@@ -20,18 +20,24 @@
       },
       {
         "ordinal": 3,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Text"
       ]
     },
     "nullable": [
@@ -39,8 +45,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "9e9170dfba29b91522146ec472417b5df4fc6acc74c2e0399bc95ebdfca7ee56"
+  "hash": "3b30e42383c57282c1b78bbeb64b0fd768d35354732660ba1c6f3518f6b2092e"
 }

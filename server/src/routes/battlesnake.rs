@@ -1,8 +1,8 @@
 use axum::{
+    Form,
     extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Redirect},
-    Form,
 };
 use cja::server::cookies::CookieJar;
 use color_eyre::eyre::Context as _;
@@ -10,8 +10,8 @@ use maud::html;
 use uuid::Uuid;
 
 use crate::{
-    components::page_factory::PageFactory,
     components::flash::Flash,
+    components::page_factory::PageFactory,
     errors::{ServerResult, WithStatus},
     models::battlesnake::{self, CreateBattlesnake, UpdateBattlesnake, Visibility},
     models::session,
@@ -63,7 +63,7 @@ pub async fn list_battlesnakes(
                                 @for snake in &battlesnakes {
                                     tr {
                                         td { (snake.name) }
-                                        td { 
+                                        td {
                                             a href=(snake.url) target="_blank" { (snake.url) }
                                         }
                                         td {
@@ -119,13 +119,13 @@ pub async fn new_battlesnake(
                         label for="name" { "Name" }
                         input type="text" id="name" name="name" class="form-control" required {}
                     }
-                    
+
                     div class="form-group" {
                         label for="url" { "URL" }
                         input type="url" id="url" name="url" class="form-control" required placeholder="https://your-battlesnake-server.com" {}
                         small class="form-text text-muted" { "The URL of your Battlesnake server" }
                     }
-                    
+
                     div class="form-group" {
                         label for="visibility" { "Visibility" }
                         select id="visibility" name="visibility" class="form-control" required {
@@ -134,7 +134,7 @@ pub async fn new_battlesnake(
                         }
                         small class="form-text text-muted" { "Control who can add this snake to games" }
                     }
-                    
+
                     div class="form-group" style="margin-top: 20px;" {
                         button type="submit" class="btn btn-primary" { "Create Battlesnake" }
                         a href="/battlesnakes" class="btn btn-secondary" { "Cancel" }
@@ -154,14 +154,15 @@ pub async fn create_battlesnake(
     Form(create_data): Form<CreateBattlesnake>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     // Get the session ID from cookie
-    let session_id = cookie_jar.get(session::SESSION_COOKIE_NAME)
+    let session_id = cookie_jar
+        .get(session::SESSION_COOKIE_NAME)
         .and_then(|c| uuid::Uuid::parse_str(c.value()).ok())
         .ok_or_else(|| "No valid session found".to_string())
         .with_status(StatusCode::BAD_REQUEST)?;
 
     // Create the new battlesnake in the database
-    let battlesnake_result = battlesnake::create_battlesnake(&state.db, user.user_id, create_data.clone())
-        .await;
+    let battlesnake_result =
+        battlesnake::create_battlesnake(&state.db, user.user_id, create_data.clone()).await;
 
     match battlesnake_result {
         Ok(_) => {
@@ -176,7 +177,7 @@ pub async fn create_battlesnake(
             .wrap_err("Failed to set flash message")?;
 
             Ok(Redirect::to("/battlesnakes").into_response())
-        },
+        }
         Err(err) => {
             // Check if it's a name uniqueness error
             if err.to_string().contains("already have a battlesnake named") {
@@ -238,13 +239,13 @@ pub async fn edit_battlesnake(
                         label for="name" { "Name" }
                         input type="text" id="name" name="name" class="form-control" required value=(battlesnake.name) {}
                     }
-                    
+
                     div class="form-group" {
                         label for="url" { "URL" }
                         input type="url" id="url" name="url" class="form-control" required value=(battlesnake.url) {}
                         small class="form-text text-muted" { "The URL of your Battlesnake server" }
                     }
-                    
+
                     div class="form-group" {
                         label for="visibility" { "Visibility" }
                         select id="visibility" name="visibility" class="form-control" required {
@@ -253,7 +254,7 @@ pub async fn edit_battlesnake(
                         }
                         small class="form-text text-muted" { "Control who can add this snake to games" }
                     }
-                    
+
                     div class="form-group" style="margin-top: 20px;" {
                         button type="submit" class="btn btn-primary" { "Update Battlesnake" }
                         a href="/battlesnakes" class="btn btn-secondary" { "Cancel" }
@@ -274,7 +275,8 @@ pub async fn update_battlesnake(
     Form(update_data): Form<UpdateBattlesnake>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     // Get the session ID from cookie
-    let session_id = cookie_jar.get(session::SESSION_COOKIE_NAME)
+    let session_id = cookie_jar
+        .get(session::SESSION_COOKIE_NAME)
         .and_then(|c| uuid::Uuid::parse_str(c.value()).ok())
         .ok_or_else(|| "No valid session found".to_string())
         .with_status(StatusCode::BAD_REQUEST)?;
@@ -290,9 +292,14 @@ pub async fn update_battlesnake(
     }
 
     // Update the battlesnake
-    let update_result = battlesnake::update_battlesnake(&state.db, battlesnake_id, user.user_id, update_data.clone())
-        .await;
-    
+    let update_result = battlesnake::update_battlesnake(
+        &state.db,
+        battlesnake_id,
+        user.user_id,
+        update_data.clone(),
+    )
+    .await;
+
     match update_result {
         Ok(_) => {
             // Flash message for success and redirect
@@ -306,7 +313,7 @@ pub async fn update_battlesnake(
             .wrap_err("Failed to set flash message")?;
 
             Ok(Redirect::to("/battlesnakes").into_response())
-        },
+        }
         Err(err) => {
             // Check if it's a name uniqueness error
             if err.to_string().contains("already have a battlesnake named") {
@@ -338,7 +345,8 @@ pub async fn delete_battlesnake(
     cookie_jar: CookieJar<AppState>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     // Get the session ID from cookie
-    let session_id = cookie_jar.get(session::SESSION_COOKIE_NAME)
+    let session_id = cookie_jar
+        .get(session::SESSION_COOKIE_NAME)
         .and_then(|c| uuid::Uuid::parse_str(c.value()).ok())
         .ok_or_else(|| "No valid session found".to_string())
         .with_status(StatusCode::BAD_REQUEST)?;
@@ -369,4 +377,4 @@ pub async fn delete_battlesnake(
     .wrap_err("Failed to set flash message")?;
 
     Ok(Redirect::to("/battlesnakes").into_response())
-} 
+}
