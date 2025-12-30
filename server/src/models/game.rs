@@ -525,7 +525,7 @@ pub async fn get_all_games_with_winners(pool: &PgPool) -> cja::Result<Vec<(Game,
             g.status,
             g.created_at,
             g.updated_at,
-            b.name as winner_name
+            b.name as "winner_name?"
         FROM games g
         LEFT JOIN game_battlesnakes gb ON g.game_id = gb.game_id AND gb.placement = 1
         LEFT JOIN battlesnakes b ON gb.battlesnake_id = b.battlesnake_id

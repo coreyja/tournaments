@@ -1,5 +1,5 @@
 import { test as base, expect, Page } from '@playwright/test';
-import { closePool, query } from './db';
+import { query } from './db';
 
 // Mock GitHub OAuth server URL (matches playwright.config.ts)
 const MOCK_GITHUB_PORT = process.env.MOCK_GITHUB_PORT || '8081';
@@ -218,8 +218,3 @@ export const test = base.extend<AuthFixtures>({
 });
 
 export { expect };
-
-// Global teardown - close the database pool after all tests
-base.afterAll(async () => {
-  await closePool();
-});
