@@ -3,17 +3,17 @@ import { test, expect } from '../fixtures/test';
 /**
  * Battlesnake Edit
  *
- * [verify battlesnake.edit.form_route]
- * [verify battlesnake.edit.form_auth_required]
- * [verify battlesnake.edit.form_prefilled]
- * [verify battlesnake.edit.post_route]
- * [verify battlesnake.edit.success_redirect]
- * [verify battlesnake.edit.cancel]
+ * web-app[verify battlesnake.edit.form_route]
+ * web-app[verify battlesnake.edit.form_auth_required]
+ * web-app[verify battlesnake.edit.form_prefilled]
+ * web-app[verify battlesnake.edit.post_route]
+ * web-app[verify battlesnake.edit.success_redirect]
+ * web-app[verify battlesnake.edit.cancel]
  */
 test.describe('Battlesnake Edit', () => {
   /**
-   * [verify battlesnake.edit.form_route]
-   * [verify battlesnake.list.edit_button]
+   * web-app[verify battlesnake.edit.form_route]
+   * web-app[verify battlesnake.list.edit_button]
    */
   test('can navigate to edit page from list', async ({ authenticatedPage }) => {
     const uniqueName = `Edit Nav Snake ${Date.now()}`;
@@ -35,7 +35,7 @@ test.describe('Battlesnake Edit', () => {
   });
 
   /**
-   * [verify battlesnake.edit.form_prefilled]
+   * web-app[verify battlesnake.edit.form_prefilled]
    */
   test('edit form is pre-populated with existing values', async ({ authenticatedPage }) => {
     const uniqueName = `Prepop Snake ${Date.now()}`;
@@ -59,8 +59,8 @@ test.describe('Battlesnake Edit', () => {
   });
 
   /**
-   * [verify battlesnake.edit.post_route]
-   * [verify battlesnake.edit.success_redirect]
+   * web-app[verify battlesnake.edit.post_route]
+   * web-app[verify battlesnake.edit.success_redirect]
    */
   test('can update battlesnake name', async ({ authenticatedPage }) => {
     const originalName = `Original Name ${Date.now()}`;
@@ -90,7 +90,7 @@ test.describe('Battlesnake Edit', () => {
   });
 
   /**
-   * [verify battlesnake.edit.post_route]
+   * web-app[verify battlesnake.edit.post_route]
    */
   test('can update battlesnake URL', async ({ authenticatedPage }) => {
     const uniqueName = `URL Update Snake ${Date.now()}`;
@@ -118,8 +118,8 @@ test.describe('Battlesnake Edit', () => {
   });
 
   /**
-   * [verify battlesnake.edit.post_route]
-   * [verify battlesnake.model.visibility]
+   * web-app[verify battlesnake.edit.post_route]
+   * web-app[verify battlesnake.model.visibility]
    */
   test('can change visibility from public to private', async ({ authenticatedPage }) => {
     const uniqueName = `Visibility Change Snake ${Date.now()}`;
@@ -147,7 +147,7 @@ test.describe('Battlesnake Edit', () => {
   });
 
   /**
-   * [verify battlesnake.edit.cancel]
+   * web-app[verify battlesnake.edit.cancel]
    */
   test('cancel button returns to list without saving', async ({ authenticatedPage }) => {
     const originalName = `Cancel Test Snake ${Date.now()}`;
@@ -174,7 +174,7 @@ test.describe('Battlesnake Edit', () => {
   });
 
   /**
-   * [verify battlesnake.edit.form_auth_required]
+   * web-app[verify battlesnake.edit.form_auth_required]
    */
   test('edit page requires authentication', async ({ page }) => {
     // Try to access edit page without auth (using a random UUID)

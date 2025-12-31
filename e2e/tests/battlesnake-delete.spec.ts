@@ -3,16 +3,16 @@ import { test, expect } from '../fixtures/test';
 /**
  * Battlesnake Delete
  *
- * [verify battlesnake.delete.route]
- * [verify battlesnake.delete.confirmation]
- * [verify battlesnake.delete.success_redirect]
- * [verify battlesnake.delete.cancel_preserves]
+ * web-app[verify battlesnake.delete.route]
+ * web-app[verify battlesnake.delete.confirmation]
+ * web-app[verify battlesnake.delete.success_redirect]
+ * web-app[verify battlesnake.delete.cancel_preserves]
  */
 test.describe('Battlesnake Delete', () => {
   /**
-   * [verify battlesnake.delete.route]
-   * [verify battlesnake.delete.confirmation]
-   * [verify battlesnake.delete.success_redirect]
+   * web-app[verify battlesnake.delete.route]
+   * web-app[verify battlesnake.delete.confirmation]
+   * web-app[verify battlesnake.delete.success_redirect]
    */
   test('can delete a battlesnake from the list', async ({ authenticatedPage }) => {
     const uniqueName = `Delete Me Snake ${Date.now()}`;
@@ -45,7 +45,7 @@ test.describe('Battlesnake Delete', () => {
   });
 
   /**
-   * [verify battlesnake.delete.cancel_preserves]
+   * web-app[verify battlesnake.delete.cancel_preserves]
    */
   test('cancel delete keeps the battlesnake', async ({ authenticatedPage }) => {
     const uniqueName = `Keep Me Snake ${Date.now()}`;
@@ -71,7 +71,7 @@ test.describe('Battlesnake Delete', () => {
   });
 
   /**
-   * [verify battlesnake.delete.route]
+   * web-app[verify battlesnake.delete.route]
    */
   test('deleting one snake does not affect others', async ({ authenticatedPage }) => {
     const keepName = `Keep This Snake ${Date.now()}`;
@@ -110,8 +110,8 @@ test.describe('Battlesnake Delete', () => {
   });
 
   /**
-   * [verify battlesnake.delete.success_redirect]
-   * [verify battlesnake.list.empty_state]
+   * web-app[verify battlesnake.delete.success_redirect]
+   * web-app[verify battlesnake.list.empty_state]
    */
   test('delete returns to list with empty state when last snake deleted', async ({ authenticatedPage }) => {
     const uniqueName = `Last Snake ${Date.now()}`;

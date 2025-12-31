@@ -3,15 +3,15 @@ import { test, expect } from '../fixtures/test';
 /**
  * Logout Flow
  *
- * [verify auth.logout.route]
- * [verify auth.logout.redirect]
- * [verify auth.logout.session.disassociation]
- * [verify auth.protected.unauthorized]
+ * web-app[verify auth.logout.route]
+ * web-app[verify auth.logout.redirect]
+ * web-app[verify auth.logout.session.disassociation]
+ * web-app[verify auth.protected.unauthorized]
  */
 test.describe('Logout Flow', () => {
   /**
-   * [verify auth.logout.route]
-   * [verify auth.logout.redirect]
+   * web-app[verify auth.logout.route]
+   * web-app[verify auth.logout.redirect]
    */
   test('clicking logout redirects to homepage', async ({ authenticatedPage }) => {
     await authenticatedPage.goto('/');
@@ -24,9 +24,9 @@ test.describe('Logout Flow', () => {
   });
 
   /**
-   * [verify auth.logout.session.disassociation]
-   * [verify homepage.unauth.message]
-   * [verify homepage.unauth.login_link]
+   * web-app[verify auth.logout.session.disassociation]
+   * web-app[verify homepage.unauth.message]
+   * web-app[verify homepage.unauth.login_link]
    */
   test('after logout, homepage shows login link', async ({ authenticatedPage }) => {
     await authenticatedPage.goto('/');
@@ -44,8 +44,8 @@ test.describe('Logout Flow', () => {
   });
 
   /**
-   * [verify auth.protected.unauthorized]
-   * [verify auth.logout.session.disassociation]
+   * web-app[verify auth.protected.unauthorized]
+   * web-app[verify auth.logout.session.disassociation]
    */
   test('protected routes return 401 after logout', async ({ authenticatedPage }) => {
     // First verify we can access /me while logged in

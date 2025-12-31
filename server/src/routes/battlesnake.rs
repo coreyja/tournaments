@@ -19,11 +19,11 @@ use crate::{
 
 /// List all battlesnakes for the current user
 ///
-/// [impl battlesnakes.list.route]
-/// [impl battlesnakes.list.auth_required]
-/// [impl battlesnakes.list.display]
-/// [impl battlesnakes.list.empty_state]
-/// [impl battlesnakes.list.flash_messages]
+/// web-app[impl battlesnakes.list.route]
+/// web-app[impl battlesnakes.list.auth_required]
+/// web-app[impl battlesnakes.list.display]
+/// web-app[impl battlesnakes.list.empty_state]
+/// web-app[impl battlesnakes.list.flash_messages]
 pub async fn list_battlesnakes(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -104,9 +104,9 @@ pub async fn list_battlesnakes(
 
 /// Show the form to create a new battlesnake
 ///
-/// [impl battlesnakes.create.form_route]
-/// [impl battlesnakes.create.auth_required]
-/// [impl battlesnakes.create.form_fields]
+/// web-app[impl battlesnakes.create.form_route]
+/// web-app[impl battlesnakes.create.auth_required]
+/// web-app[impl battlesnakes.create.form_fields]
 pub async fn new_battlesnake(
     CurrentUser(_): CurrentUser,
     page_factory: PageFactory,
@@ -160,10 +160,10 @@ pub async fn new_battlesnake(
 
 /// Handle the creation of a new battlesnake
 ///
-/// [impl battlesnakes.create.submission]
-/// [impl battlesnakes.create.success_redirect]
-/// [impl battlesnakes.create.success_flash]
-/// [impl battlesnakes.name.unique_per_user]
+/// web-app[impl battlesnakes.create.submission]
+/// web-app[impl battlesnakes.create.success_redirect]
+/// web-app[impl battlesnakes.create.success_flash]
+/// web-app[impl battlesnakes.name.unique_per_user]
 pub async fn create_battlesnake(
     State(state): State<AppState>,
     CurrentUserWithSession { user, session }: CurrentUserWithSession,
@@ -225,10 +225,10 @@ pub async fn create_battlesnake(
 
 /// Show the form to edit an existing battlesnake
 ///
-/// [impl battlesnakes.edit.form_route]
-/// [impl battlesnakes.edit.auth_required]
-/// [impl battlesnakes.edit.ownership_check]
-/// [impl battlesnakes.edit.form_fields]
+/// web-app[impl battlesnakes.edit.form_route]
+/// web-app[impl battlesnakes.edit.auth_required]
+/// web-app[impl battlesnakes.edit.ownership_check]
+/// web-app[impl battlesnakes.edit.form_fields]
 pub async fn edit_battlesnake(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -297,10 +297,10 @@ pub async fn edit_battlesnake(
 
 /// Handle the update of an existing battlesnake
 ///
-/// [impl battlesnakes.edit.submission]
-/// [impl battlesnakes.edit.success_redirect]
-/// [impl battlesnakes.edit.success_flash]
-/// [impl battlesnakes.edit.ownership_check]
+/// web-app[impl battlesnakes.edit.submission]
+/// web-app[impl battlesnakes.edit.success_redirect]
+/// web-app[impl battlesnakes.edit.success_flash]
+/// web-app[impl battlesnakes.edit.ownership_check]
 pub async fn update_battlesnake(
     State(state): State<AppState>,
     CurrentUserWithSession { user, session }: CurrentUserWithSession,
@@ -365,11 +365,11 @@ pub async fn update_battlesnake(
 
 /// Handle the deletion of a battlesnake
 ///
-/// [impl battlesnakes.delete.route]
-/// [impl battlesnakes.delete.auth_required]
-/// [impl battlesnakes.delete.ownership_check]
-/// [impl battlesnakes.delete.success_redirect]
-/// [impl battlesnakes.delete.success_flash]
+/// web-app[impl battlesnakes.delete.route]
+/// web-app[impl battlesnakes.delete.auth_required]
+/// web-app[impl battlesnakes.delete.ownership_check]
+/// web-app[impl battlesnakes.delete.success_redirect]
+/// web-app[impl battlesnakes.delete.success_flash]
 pub async fn delete_battlesnake(
     State(state): State<AppState>,
     CurrentUserWithSession { user, session }: CurrentUserWithSession,

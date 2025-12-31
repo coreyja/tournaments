@@ -3,15 +3,15 @@ import { test, expect, createMockUser } from '../fixtures/test';
 /**
  * Battlesnake Permissions
  *
- * [verify battlesnake.edit.form_not_found]
- * [verify battlesnake.edit.post_ownership]
- * [verify battlesnake.delete.ownership]
- * [verify battlesnake.permission.forbidden_status]
- * [verify battlesnake.visibility.list_own_only]
+ * web-app[verify battlesnake.edit.form_not_found]
+ * web-app[verify battlesnake.edit.post_ownership]
+ * web-app[verify battlesnake.delete.ownership]
+ * web-app[verify battlesnake.permission.forbidden_status]
+ * web-app[verify battlesnake.visibility.list_own_only]
  */
 test.describe('Battlesnake Permissions', () => {
   /**
-   * [verify battlesnake.edit.form_not_found]
+   * web-app[verify battlesnake.edit.form_not_found]
    */
   test('cannot edit non-existent battlesnake (404)', async ({ authenticatedPage }) => {
     // Try to edit a battlesnake that doesn't exist
@@ -22,7 +22,7 @@ test.describe('Battlesnake Permissions', () => {
   });
 
   /**
-   * [verify battlesnake.permission.forbidden_status]
+   * web-app[verify battlesnake.permission.forbidden_status]
    */
   test('cannot update non-existent battlesnake (403 or 404)', async ({ authenticatedPage }) => {
     // First go to create page to get a valid form structure
@@ -46,7 +46,7 @@ test.describe('Battlesnake Permissions', () => {
   });
 
   /**
-   * [verify battlesnake.permission.forbidden_status]
+   * web-app[verify battlesnake.permission.forbidden_status]
    */
   test('cannot delete non-existent battlesnake (403)', async ({ authenticatedPage }) => {
     const nonExistentId = '00000000-0000-0000-0000-000000000000';
@@ -60,7 +60,7 @@ test.describe('Battlesnake Permissions', () => {
   });
 
   /**
-   * [verify battlesnake.create.form_auth_required]
+   * web-app[verify battlesnake.create.form_auth_required]
    */
   test('create page requires authentication', async ({ page }) => {
     const response = await page.goto('/battlesnakes/new');
@@ -68,7 +68,7 @@ test.describe('Battlesnake Permissions', () => {
   });
 
   /**
-   * [verify battlesnake.list.auth_required]
+   * web-app[verify battlesnake.list.auth_required]
    */
   test('list page requires authentication', async ({ page }) => {
     const response = await page.goto('/battlesnakes');
@@ -76,7 +76,7 @@ test.describe('Battlesnake Permissions', () => {
   });
 
   /**
-   * [verify battlesnake.edit.form_auth_required]
+   * web-app[verify battlesnake.edit.form_auth_required]
    */
   test('edit page requires authentication', async ({ page }) => {
     const response = await page.goto('/battlesnakes/00000000-0000-0000-0000-000000000000/edit');
@@ -84,7 +84,7 @@ test.describe('Battlesnake Permissions', () => {
   });
 
   /**
-   * [verify battlesnake.create.post_auth_required]
+   * web-app[verify battlesnake.create.post_auth_required]
    */
   test('create POST requires authentication', async ({ page }) => {
     const response = await page.request.post('/battlesnakes', {
@@ -98,7 +98,7 @@ test.describe('Battlesnake Permissions', () => {
   });
 
   /**
-   * [verify battlesnake.edit.post_auth_required]
+   * web-app[verify battlesnake.edit.post_auth_required]
    */
   test('update POST requires authentication', async ({ page }) => {
     const response = await page.request.post('/battlesnakes/00000000-0000-0000-0000-000000000000/update', {
@@ -112,7 +112,7 @@ test.describe('Battlesnake Permissions', () => {
   });
 
   /**
-   * [verify battlesnake.delete.auth_required]
+   * web-app[verify battlesnake.delete.auth_required]
    */
   test('delete POST requires authentication', async ({ page }) => {
     const response = await page.request.post('/battlesnakes/00000000-0000-0000-0000-000000000000/delete');
@@ -120,7 +120,7 @@ test.describe('Battlesnake Permissions', () => {
   });
 
   /**
-   * [verify battlesnake.visibility.list_own_only]
+   * web-app[verify battlesnake.visibility.list_own_only]
    */
   test('can only see own battlesnakes in list', async ({ authenticatedPage, loginAsUser }) => {
     const user1SnakeName = `User1 Snake ${Date.now()}`;

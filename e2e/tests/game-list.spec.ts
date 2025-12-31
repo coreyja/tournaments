@@ -3,20 +3,20 @@ import { test, expect } from '../fixtures/test';
 /**
  * Game List
  *
- * [verify game.list.route]
- * [verify game.list.auth_required]
- * [verify game.list.empty_state]
- * [verify game.list.display_board_size]
- * [verify game.list.display_game_type]
- * [verify game.list.view_link]
- * [verify game.list.create_link]
- * [verify game.view.route]
- * [verify game.view.display_board_size]
- * [verify game.view.display_game_type]
- * [verify game.view.results_table]
- * [verify game.view.results_placement]
- * [verify game.view.results_name]
- * [verify game.view.placement_badges]
+ * web-app[verify game.list.route]
+ * web-app[verify game.list.auth_required]
+ * web-app[verify game.list.empty_state]
+ * web-app[verify game.list.display_board_size]
+ * web-app[verify game.list.display_game_type]
+ * web-app[verify game.list.view_link]
+ * web-app[verify game.list.create_link]
+ * web-app[verify game.view.route]
+ * web-app[verify game.view.display_board_size]
+ * web-app[verify game.view.display_game_type]
+ * web-app[verify game.view.results_table]
+ * web-app[verify game.view.results_placement]
+ * web-app[verify game.view.results_name]
+ * web-app[verify game.view.placement_badges]
  */
 test.describe('Game List', () => {
   test('shows games list page', async ({ authenticatedPage }) => {

@@ -8,7 +8,7 @@ use super::game_battlesnake::AddBattlesnakeToGame;
 
 /// Game board size enum
 ///
-/// [impl games.model.board_size]
+/// web-app[impl games.model.board_size]
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum GameBoardSize {
     Small,  // 7x7
@@ -41,7 +41,7 @@ impl FromStr for GameBoardSize {
 
 /// Game type enum
 ///
-/// [impl games.model.game_type]
+/// web-app[impl games.model.game_type]
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum GameType {
     Standard,
@@ -77,7 +77,7 @@ impl FromStr for GameType {
 
 /// Game status enum
 ///
-/// [impl games.model.status]
+/// web-app[impl games.model.status]
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum GameStatus {
     Waiting,
@@ -110,7 +110,7 @@ impl FromStr for GameStatus {
 
 /// Game model for our application
 ///
-/// [impl games.model.fields]
+/// web-app[impl games.model.fields]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Game {
     pub game_id: Uuid,
@@ -152,7 +152,7 @@ struct GameWithWinnerRow {
 
 /// Get all games
 ///
-/// [impl games.model.get_all]
+/// web-app[impl games.model.get_all]
 pub async fn get_all_games(pool: &PgPool) -> cja::Result<Vec<Game>> {
     let rows = sqlx::query!(
         r#"
@@ -197,7 +197,7 @@ pub async fn get_all_games(pool: &PgPool) -> cja::Result<Vec<Game>> {
 
 /// Get a single game by ID
 ///
-/// [impl games.model.get_by_id]
+/// web-app[impl games.model.get_by_id]
 pub async fn get_game_by_id(pool: &PgPool, game_id: Uuid) -> cja::Result<Option<Game>> {
     let row = sqlx::query!(
         r#"
@@ -259,10 +259,10 @@ pub async fn delete_game(pool: &PgPool, game_id: Uuid) -> cja::Result<()> {
 
 /// Create a new game with all battlesnakes in a single transaction
 ///
-/// [impl games.model.create]
-/// [impl games.snakes.min_constraint]
-/// [impl games.snakes.max_constraint]
-/// [impl games.snakes.no_duplicates]
+/// web-app[impl games.model.create]
+/// web-app[impl games.snakes.min_constraint]
+/// web-app[impl games.snakes.max_constraint]
+/// web-app[impl games.snakes.no_duplicates]
 pub async fn create_game_with_snakes(
     pool: &PgPool,
     data: CreateGameWithSnakes,
@@ -479,8 +479,8 @@ pub async fn update_game_status(
 
 /// Run a game and assign random placements
 ///
-/// [impl games.model.run_game]
-/// [impl games.model.assign_placements]
+/// web-app[impl games.model.run_game]
+/// web-app[impl games.model.assign_placements]
 pub async fn run_game(pool: &PgPool, game_id: Uuid) -> cja::Result<()> {
     // Update status to running
     update_game_status(pool, game_id, GameStatus::Running).await?;
@@ -535,8 +535,8 @@ pub async fn run_game(pool: &PgPool, game_id: Uuid) -> cja::Result<()> {
 
 /// Get all games with their winners (if available)
 ///
-/// [impl games.model.get_all_with_winners]
-/// [impl games.list.winner_display]
+/// web-app[impl games.model.get_all_with_winners]
+/// web-app[impl games.list.winner_display]
 pub async fn get_all_games_with_winners(pool: &PgPool) -> cja::Result<Vec<(Game, Option<String>)>> {
     let rows = sqlx::query_as!(
         GameWithWinnerRow,

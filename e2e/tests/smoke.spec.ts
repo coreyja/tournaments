@@ -3,10 +3,10 @@ import { test, expect } from '../fixtures/test';
 /**
  * Smoke Tests
  *
- * [verify homepage.route]
- * [verify homepage.public]
- * [verify homepage.unauth.message]
- * [verify homepage.unauth.login_link]
+ * web-app[verify homepage.route]
+ * web-app[verify homepage.public]
+ * web-app[verify homepage.unauth.message]
+ * web-app[verify homepage.unauth.login_link]
  */
 test.describe('Smoke Tests', () => {
   test('homepage loads successfully', async ({ page }) => {

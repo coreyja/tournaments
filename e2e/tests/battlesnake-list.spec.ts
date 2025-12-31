@@ -3,19 +3,19 @@ import { test, expect } from '../fixtures/test';
 /**
  * Battlesnake List
  *
- * [verify battlesnake.list.route]
- * [verify battlesnake.list.auth_required]
- * [verify battlesnake.list.empty_state]
- * [verify battlesnake.list.display_name]
- * [verify battlesnake.list.display_url]
- * [verify battlesnake.list.display_visibility]
- * [verify battlesnake.list.edit_button]
- * [verify battlesnake.list.delete_button]
- * [verify battlesnake.list.add_button]
+ * web-app[verify battlesnake.list.route]
+ * web-app[verify battlesnake.list.auth_required]
+ * web-app[verify battlesnake.list.empty_state]
+ * web-app[verify battlesnake.list.display_name]
+ * web-app[verify battlesnake.list.display_url]
+ * web-app[verify battlesnake.list.display_visibility]
+ * web-app[verify battlesnake.list.edit_button]
+ * web-app[verify battlesnake.list.delete_button]
+ * web-app[verify battlesnake.list.add_button]
  */
 test.describe('Battlesnake List', () => {
   /**
-   * [verify battlesnake.list.empty_state]
+   * web-app[verify battlesnake.list.empty_state]
    */
   test('displays empty state when user has no battlesnakes', async ({ authenticatedPage }) => {
     await authenticatedPage.goto('/battlesnakes');
@@ -25,9 +25,9 @@ test.describe('Battlesnake List', () => {
   });
 
   /**
-   * [verify battlesnake.list.display_name]
-   * [verify battlesnake.list.display_url]
-   * [verify battlesnake.list.display_visibility]
+   * web-app[verify battlesnake.list.display_name]
+   * web-app[verify battlesnake.list.display_url]
+   * web-app[verify battlesnake.list.display_visibility]
    */
   test('displays battlesnakes after creation', async ({ authenticatedPage }) => {
     const uniqueName = `List Test Snake ${Date.now()}`;
@@ -49,7 +49,7 @@ test.describe('Battlesnake List', () => {
   });
 
   /**
-   * [verify battlesnake.list.display_visibility]
+   * web-app[verify battlesnake.list.display_visibility]
    */
   test('shows correct visibility badges', async ({ authenticatedPage }) => {
     const publicName = `Public Snake ${Date.now()}`;
@@ -81,8 +81,8 @@ test.describe('Battlesnake List', () => {
   });
 
   /**
-   * [verify battlesnake.list.edit_button]
-   * [verify battlesnake.list.delete_button]
+   * web-app[verify battlesnake.list.edit_button]
+   * web-app[verify battlesnake.list.delete_button]
    */
   test('shows edit and delete buttons for each snake', async ({ authenticatedPage }) => {
     const uniqueName = `Actions Test Snake ${Date.now()}`;
@@ -103,7 +103,7 @@ test.describe('Battlesnake List', () => {
   });
 
   /**
-   * [verify battlesnake.list.add_button]
+   * web-app[verify battlesnake.list.add_button]
    */
   test('has Add New Battlesnake button', async ({ authenticatedPage }) => {
     await authenticatedPage.goto('/battlesnakes');
@@ -114,7 +114,7 @@ test.describe('Battlesnake List', () => {
   });
 
   /**
-   * [verify battlesnake.list.auth_required]
+   * web-app[verify battlesnake.list.auth_required]
    */
   test('list page requires authentication', async ({ page }) => {
     const response = await page.goto('/battlesnakes');

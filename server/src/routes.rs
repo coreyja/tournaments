@@ -75,13 +75,13 @@ pub fn routes(app_state: AppState) -> axum::Router {
 
 /// Homepage route
 ///
-/// [impl homepage.route]
-/// [impl homepage.public]
-/// [impl homepage.unauth.message]
-/// [impl homepage.unauth.login_link]
-/// [impl homepage.auth.welcome]
-/// [impl homepage.auth.profile_link]
-/// [impl homepage.auth.logout_link]
+/// web-app[impl homepage.route]
+/// web-app[impl homepage.public]
+/// web-app[impl homepage.unauth.message]
+/// web-app[impl homepage.unauth.login_link]
+/// web-app[impl homepage.auth.welcome]
+/// web-app[impl homepage.auth.profile_link]
+/// web-app[impl homepage.auth.logout_link]
 async fn root_page(
     _: State<AppState>,
     auth::OptionalUser(user): auth::OptionalUser,
@@ -121,22 +121,22 @@ async fn root_page(
 
 /// Profile page that requires authentication
 ///
-/// [impl profile.route]
-/// [impl profile.auth_required]
-/// [impl profile.title]
-/// [impl profile.display.login]
-/// [impl profile.display.avatar]
-/// [impl profile.display.name]
-/// [impl profile.display.email]
-/// [impl profile.details.heading]
-/// [impl profile.details.github_id]
-/// [impl profile.details.created_at]
-/// [impl profile.details.updated_at]
-/// [impl profile.nav.battlesnakes]
-/// [impl profile.nav.create_game]
-/// [impl profile.nav.view_games]
-/// [impl profile.nav.home]
-/// [impl profile.nav.logout]
+/// web-app[impl profile.route]
+/// web-app[impl profile.auth_required]
+/// web-app[impl profile.title]
+/// web-app[impl profile.display.login]
+/// web-app[impl profile.display.avatar]
+/// web-app[impl profile.display.name]
+/// web-app[impl profile.display.email]
+/// web-app[impl profile.details.heading]
+/// web-app[impl profile.details.github_id]
+/// web-app[impl profile.details.created_at]
+/// web-app[impl profile.details.updated_at]
+/// web-app[impl profile.nav.battlesnakes]
+/// web-app[impl profile.nav.create_game]
+/// web-app[impl profile.nav.view_games]
+/// web-app[impl profile.nav.home]
+/// web-app[impl profile.nav.logout]
 async fn profile_page(
     auth::CurrentUser(user): auth::CurrentUser,
     page_factory: PageFactory,

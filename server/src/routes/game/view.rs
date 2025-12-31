@@ -19,11 +19,11 @@ use crate::{
 
 /// Display game details
 ///
-/// [impl games.view.route]
-/// [impl games.view.auth_required]
-/// [impl games.view.display_config]
-/// [impl games.view.display_snakes]
-/// [impl games.view.display_placements]
+/// web-app[impl games.view.route]
+/// web-app[impl games.view.auth_required]
+/// web-app[impl games.view.display_config]
+/// web-app[impl games.view.display_snakes]
+/// web-app[impl games.view.display_placements]
 #[debug_handler]
 pub async fn view_game(
     State(state): State<AppState>,
@@ -113,11 +113,11 @@ pub async fn view_game(
 
 /// List all games
 ///
-/// [impl games.list.route]
-/// [impl games.list.auth_required]
-/// [impl games.list.display_table]
-/// [impl games.list.empty_state]
-/// [impl games.list.winner_display]
+/// web-app[impl games.list.route]
+/// web-app[impl games.list.auth_required]
+/// web-app[impl games.list.display_table]
+/// web-app[impl games.list.empty_state]
+/// web-app[impl games.list.winner_display]
 #[debug_handler]
 pub async fn list_games(
     State(state): State<AppState>,

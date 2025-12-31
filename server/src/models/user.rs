@@ -7,11 +7,11 @@ use crate::github::auth::{GitHubTokenResponse, GitHubUser};
 
 /// User model for our application
 ///
-/// [impl auth.user.model]
-/// [impl profile.display.login]
-/// [impl profile.display.avatar]
-/// [impl profile.display.name]
-/// [impl profile.display.email]
+/// web-app[impl auth.user.model]
+/// web-app[impl profile.display.login]
+/// web-app[impl profile.display.avatar]
+/// web-app[impl profile.display.name]
+/// web-app[impl profile.display.email]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     pub user_id: Uuid,
@@ -28,7 +28,7 @@ pub struct User {
 
 /// Get user by ID
 ///
-/// [impl auth.user.get_by_id]
+/// web-app[impl auth.user.get_by_id]
 pub async fn get_user_by_id(pool: &PgPool, user_id: Uuid) -> cja::Result<Option<User>> {
     let user = sqlx::query_as!(
         User,
@@ -56,8 +56,8 @@ pub async fn get_user_by_id(pool: &PgPool, user_id: Uuid) -> cja::Result<Option<
 
 /// Create or update user from GitHub OAuth
 ///
-/// [impl auth.oauth.success.user_creation]
-/// [impl auth.user.upsert]
+/// web-app[impl auth.oauth.success.user_creation]
+/// web-app[impl auth.user.upsert]
 pub async fn create_or_update_user(
     pool: &PgPool,
     github_user: GitHubUser,

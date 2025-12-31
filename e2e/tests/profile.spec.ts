@@ -3,22 +3,22 @@ import { test, expect } from '../fixtures/test';
 /**
  * Profile Page
  *
- * [verify profile.route]
- * [verify profile.auth_required]
- * [verify profile.title]
- * [verify profile.display.login]
- * [verify profile.display.avatar]
- * [verify profile.display.name]
- * [verify profile.display.email]
- * [verify profile.details.heading]
- * [verify profile.details.github_id]
- * [verify profile.details.created_at]
- * [verify profile.details.updated_at]
- * [verify profile.nav.battlesnakes]
- * [verify profile.nav.create_game]
- * [verify profile.nav.view_games]
- * [verify profile.nav.home]
- * [verify profile.nav.logout]
+ * web-app[verify profile.route]
+ * web-app[verify profile.auth_required]
+ * web-app[verify profile.title]
+ * web-app[verify profile.display.login]
+ * web-app[verify profile.display.avatar]
+ * web-app[verify profile.display.name]
+ * web-app[verify profile.display.email]
+ * web-app[verify profile.details.heading]
+ * web-app[verify profile.details.github_id]
+ * web-app[verify profile.details.created_at]
+ * web-app[verify profile.details.updated_at]
+ * web-app[verify profile.nav.battlesnakes]
+ * web-app[verify profile.nav.create_game]
+ * web-app[verify profile.nav.view_games]
+ * web-app[verify profile.nav.home]
+ * web-app[verify profile.nav.logout]
  */
 test.describe('Profile Page', () => {
   test('displays user information', async ({ authenticatedPage, mockUser }) => {

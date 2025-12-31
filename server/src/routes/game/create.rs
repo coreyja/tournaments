@@ -24,9 +24,9 @@ use crate::{
 
 /// Initial game creation page - redirect to a new flow
 ///
-/// [impl games.create.initiation]
-/// [impl games.create.auth_required]
-/// [impl games.create.flow_creation]
+/// web-app[impl games.create.initiation]
+/// web-app[impl games.create.auth_required]
+/// web-app[impl games.create.flow_creation]
 #[debug_handler]
 pub async fn new_game(
     State(state): State<AppState>,
@@ -43,12 +43,12 @@ pub async fn new_game(
 
 /// Game create form - show the game creation form with the flow state
 ///
-/// [impl games.create.flow_route]
-/// [impl games.create.board_size_selection]
-/// [impl games.create.game_type_selection]
-/// [impl games.create.snake_display]
-/// [impl games.create.snake_selection]
-/// [impl games.search.display]
+/// web-app[impl games.create.flow_route]
+/// web-app[impl games.create.board_size_selection]
+/// web-app[impl games.create.game_type_selection]
+/// web-app[impl games.create.snake_display]
+/// web-app[impl games.create.snake_selection]
+/// web-app[impl games.search.display]
 #[debug_handler]
 pub async fn show_game_flow(
     State(state): State<AppState>,
@@ -216,7 +216,7 @@ pub struct ConfigureGameForm {
 
 /// Reset the snake selections in the flow
 ///
-/// [impl games.create.reset_selection]
+/// web-app[impl games.create.reset_selection]
 #[debug_handler]
 pub async fn reset_snake_selections(
     State(state): State<AppState>,
@@ -244,8 +244,8 @@ pub async fn reset_snake_selections(
 
 /// Add a battlesnake to the selection
 ///
-/// [impl games.create.add_snake]
-/// [impl games.snakes.max_constraint]
+/// web-app[impl games.create.add_snake]
+/// web-app[impl games.snakes.max_constraint]
 #[debug_handler]
 pub async fn add_battlesnake(
     State(state): State<AppState>,
@@ -286,7 +286,7 @@ pub async fn add_battlesnake(
 
 /// Remove a battlesnake from the selection
 ///
-/// [impl games.create.remove_snake]
+/// web-app[impl games.create.remove_snake]
 #[debug_handler]
 pub async fn remove_battlesnake(
     State(state): State<AppState>,
@@ -320,8 +320,8 @@ pub struct SearchQuery {
 
 /// Search for public battlesnakes
 ///
-/// [impl games.search.route]
-/// [impl games.search.public_only]
+/// web-app[impl games.search.route]
+/// web-app[impl games.search.public_only]
 #[debug_handler]
 pub async fn search_battlesnakes(
     State(state): State<AppState>,
@@ -350,11 +350,11 @@ pub async fn search_battlesnakes(
 
 /// Create the game with selected snakes
 ///
-/// [impl games.create.submission]
-/// [impl games.snakes.min_constraint]
-/// [impl games.create.success_redirect]
-/// [impl games.create.success_flash]
-/// [impl games.create.error_flash]
+/// web-app[impl games.create.submission]
+/// web-app[impl games.snakes.min_constraint]
+/// web-app[impl games.create.success_redirect]
+/// web-app[impl games.create.success_flash]
+/// web-app[impl games.create.error_flash]
 #[debug_handler]
 pub async fn create_game(
     State(state): State<AppState>,
@@ -430,7 +430,7 @@ pub async fn create_game(
 
 /// Helper function to render search results
 ///
-/// [impl games.search.display]
+/// web-app[impl games.search.display]
 async fn render_search_results(flow: &GameCreationFlow, db: &sqlx::PgPool) -> maud::Markup {
     // Execute the search
     let search_results = flow

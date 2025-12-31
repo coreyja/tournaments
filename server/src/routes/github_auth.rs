@@ -24,10 +24,10 @@ use super::auth::CurrentSession;
 
 /// Route handler for initiating GitHub OAuth flow
 ///
-/// [impl auth.oauth.initiation]
-/// [impl auth.oauth.state.generation]
-/// [impl auth.oauth.state.storage]
-/// [impl auth.oauth.scope]
+/// web-app[impl auth.oauth.initiation]
+/// web-app[impl auth.oauth.state.generation]
+/// web-app[impl auth.oauth.state.storage]
+/// web-app[impl auth.oauth.scope]
 pub async fn github_auth(
     State(state): State<AppState>,
     current_session: CurrentSession,
@@ -59,17 +59,17 @@ pub async fn github_auth(
 
 /// Route handler for GitHub OAuth callback
 ///
-/// [impl auth.oauth.callback.route]
-/// [impl auth.oauth.state.validation]
-/// [impl auth.oauth.state.mismatch]
-/// [impl auth.oauth.state.missing]
-/// [impl auth.oauth.state.cleanup]
-/// [impl auth.oauth.token.exchange]
-/// [impl auth.oauth.user.fetch]
-/// [impl auth.oauth.user.creation]
-/// [impl auth.oauth.user.update]
-/// [impl auth.oauth.session.association]
-/// [impl auth.oauth.success.redirect]
+/// web-app[impl auth.oauth.callback.route]
+/// web-app[impl auth.oauth.state.validation]
+/// web-app[impl auth.oauth.state.mismatch]
+/// web-app[impl auth.oauth.state.missing]
+/// web-app[impl auth.oauth.state.cleanup]
+/// web-app[impl auth.oauth.token.exchange]
+/// web-app[impl auth.oauth.user.fetch]
+/// web-app[impl auth.oauth.user.creation]
+/// web-app[impl auth.oauth.user.update]
+/// web-app[impl auth.oauth.session.association]
+/// web-app[impl auth.oauth.success.redirect]
 pub async fn github_auth_callback(
     State(state): State<AppState>,
     Query(params): Query<GitHubAuthParams>,
@@ -161,10 +161,10 @@ pub async fn github_auth_callback(
 
 /// Route handler for logging out
 ///
-/// [impl auth.logout.route]
-/// [impl auth.logout.session.disassociation]
-/// [impl auth.logout.redirect]
-/// [impl auth.logout.flash]
+/// web-app[impl auth.logout.route]
+/// web-app[impl auth.logout.session.disassociation]
+/// web-app[impl auth.logout.redirect]
+/// web-app[impl auth.logout.flash]
 pub async fn logout(
     State(state): State<AppState>,
     current_session: CurrentSession,

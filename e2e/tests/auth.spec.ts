@@ -3,14 +3,14 @@ import { test, expect } from '../fixtures/test';
 /**
  * Authentication via Mock OAuth
  *
- * [verify auth.oauth.success.redirect]
- * [verify auth.protected.extraction]
- * [verify homepage.auth.welcome]
+ * web-app[verify auth.oauth.success.redirect]
+ * web-app[verify auth.protected.extraction]
+ * web-app[verify homepage.auth.welcome]
  */
 test.describe('Authentication via Mock OAuth', () => {
   /**
-   * [verify auth.oauth.success.redirect]
-   * [verify homepage.auth.welcome]
+   * web-app[verify auth.oauth.success.redirect]
+   * web-app[verify homepage.auth.welcome]
    */
   test('authenticatedPage shows logged in user on homepage', async ({ authenticatedPage, mockUser }) => {
     // authenticatedPage starts at home page after OAuth redirect
@@ -21,9 +21,9 @@ test.describe('Authentication via Mock OAuth', () => {
   });
 
   /**
-   * [verify auth.protected.extraction]
-   * [verify profile.route]
-   * [verify profile.auth_required]
+   * web-app[verify auth.protected.extraction]
+   * web-app[verify profile.route]
+   * web-app[verify profile.auth_required]
    */
   test('authenticatedPage can access protected routes', async ({ authenticatedPage }) => {
     // Profile page requires authentication (at /me)
@@ -35,10 +35,10 @@ test.describe('Authentication via Mock OAuth', () => {
   });
 
   /**
-   * [verify auth.user.github_id]
-   * [verify auth.user.github_login]
-   * [verify auth.user.name]
-   * [verify auth.user.email]
+   * web-app[verify auth.user.github_id]
+   * web-app[verify auth.user.github_login]
+   * web-app[verify auth.user.name]
+   * web-app[verify auth.user.email]
    */
   test('mockUser has expected properties', async ({ mockUser }) => {
     // MockUser should have the expected shape

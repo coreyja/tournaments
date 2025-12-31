@@ -3,18 +3,18 @@ import { test, expect } from '../fixtures/test';
 /**
  * Create Battlesnake
  *
- * [verify battlesnake.create.form_route]
- * [verify battlesnake.create.form_auth_required]
- * [verify battlesnake.create.post_route]
- * [verify battlesnake.create.fields]
- * [verify battlesnake.create.success_redirect]
- * [verify battlesnake.create.success_flash]
+ * web-app[verify battlesnake.create.form_route]
+ * web-app[verify battlesnake.create.form_auth_required]
+ * web-app[verify battlesnake.create.post_route]
+ * web-app[verify battlesnake.create.fields]
+ * web-app[verify battlesnake.create.success_redirect]
+ * web-app[verify battlesnake.create.success_flash]
  */
 test.describe('Create Battlesnake', () => {
   /**
-   * [verify battlesnake.create.form_route]
-   * [verify battlesnake.create.fields]
-   * [verify battlesnake.create.success_redirect]
+   * web-app[verify battlesnake.create.form_route]
+   * web-app[verify battlesnake.create.fields]
+   * web-app[verify battlesnake.create.success_redirect]
    */
   test('can create a battlesnake with valid data', async ({ authenticatedPage }) => {
     const uniqueName = `Test Snake ${Date.now()}`;
@@ -40,7 +40,7 @@ test.describe('Create Battlesnake', () => {
   });
 
   /**
-   * [verify battlesnake.model.visibility]
+   * web-app[verify battlesnake.model.visibility]
    */
   test('can create a private battlesnake', async ({ authenticatedPage }) => {
     const uniqueName = `Private Snake ${Date.now()}`;
@@ -59,7 +59,7 @@ test.describe('Create Battlesnake', () => {
   });
 
   /**
-   * [verify battlesnake.create.success_flash]
+   * web-app[verify battlesnake.create.success_flash]
    */
   test('shows success flash message after creating battlesnake', async ({ authenticatedPage }) => {
     const uniqueName = `Flash Test Snake ${Date.now()}`;
@@ -79,7 +79,7 @@ test.describe('Create Battlesnake', () => {
   });
 
   /**
-   * [verify battlesnake.create.form_auth_required]
+   * web-app[verify battlesnake.create.form_auth_required]
    */
   test('new form requires authentication', async ({ page }) => {
     // Without authentication, should get 401

@@ -35,9 +35,16 @@ jobs:
 
       - name: Install Tracey
         run: |
-          if ! command -v tracey &> /dev/null; then
-            cargo install tracey
-          fi
+          # Build tracey from source (v1.0.0 on crates.io is broken)
+          echo "Building tracey from source due to broken crates.io release..."
+          git clone https://github.com/bearcove/tracey /tmp/tracey --depth 1
+          cd /tmp/tracey
+          cargo build --release
+          # Install to cargo bin directory
+          cp target/release/tracey ~/.cargo/bin/
+          echo "Tracey built and installed from source"
+          # Verify installation
+          tracey --help | head -5
 
       - name: Generate Tracey Rules
         run: |
@@ -48,20 +55,23 @@ jobs:
       - name: Run Tracey Report
         run: |
           echo "Generating Tracey coverage report..."
-          # Generate HTML report
-          tracey --config .config/tracey/config.kdl -f html > tracey-report.html || true
-          # Generate JSON report
-          tracey --config .config/tracey/config.kdl -f json > tracey-report.json || true
-          # Check if reports were generated
-          if [ -s tracey-report.html ] || [ -s tracey-report.json ]; then
-            echo "Reports generated successfully"
-            ls -la tracey-report.*
-          else
-            echo "Warning: Reports may be empty or not generated"
-            # Create placeholder files to avoid CI failure
-            echo "<html><body><h1>Tracey Report</h1><p>No coverage data available yet.</p></body></html>" > tracey-report.html
-            echo '{"message": "No coverage data available yet"}' > tracey-report.json
-          fi
+
+          # Generate traceability matrix reports
+          echo "Generating HTML and JSON reports..."
+          tracey matrix --config .config/tracey/config.kdl -f html > tracey-report.html
+          tracey matrix --config .config/tracey/config.kdl -f json > tracey-report.json
+
+          # Also generate text summary for console output
+          echo "Coverage Summary:"
+          tracey -v | grep -E 'Coverage|rules' | head -5 || true
+
+          # Check report sizes
+          HTML_SIZE=$(wc -c < tracey-report.html)
+          JSON_SIZE=$(wc -c < tracey-report.json)
+          echo "✓ Generated HTML report: $HTML_SIZE bytes"
+          echo "✓ Generated JSON report: $JSON_SIZE bytes"
+
+          ls -la tracey-report.*
         continue-on-error: true
 
       - name: Upload Tracey Report
