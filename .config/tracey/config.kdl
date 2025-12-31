@@ -1,0 +1,9 @@
+spec {
+  name "web-app"
+  rules_glob "specs/web_app/**/*.md"
+  include "server/src/**/*.rs"
+  include "e2e/tests/**/*.ts"
+  exclude "target/**"
+  exclude "node_modules/**"
+  exclude "e2e/node_modules/**"
+}

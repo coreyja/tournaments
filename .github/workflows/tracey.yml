@@ -1,0 +1,81 @@
+name: Tracey
+
+on:
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tracey:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-tracey-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-tracey-
+
+      - name: Install Tracey
+        run: |
+          # Build tracey from source (v1.0.0 on crates.io is broken)
+          echo "Building tracey from source due to broken crates.io release..."
+          git clone https://github.com/bearcove/tracey /tmp/tracey --depth 1
+          cd /tmp/tracey
+          cargo build --release
+          # Install to cargo bin directory
+          cp target/release/tracey ~/.cargo/bin/
+          echo "Tracey built and installed from source"
+          # Verify installation
+          tracey --help | head -5
+
+      - name: Generate Tracey Rules
+        run: |
+          echo "Extracting rules from specifications..."
+          tracey --config .config/tracey/config.kdl rules specs/web_app/*.md > specs/web_app/_rules.json || true
+          echo "Rules file generated at specs/web_app/_rules.json"
+
+      - name: Run Tracey Report
+        run: |
+          echo "Generating Tracey coverage report..."
+
+          # Generate traceability matrix reports
+          echo "Generating HTML and JSON reports..."
+          tracey matrix --config .config/tracey/config.kdl -f html > tracey-report.html
+          tracey matrix --config .config/tracey/config.kdl -f json > tracey-report.json
+
+          # Also generate text summary for console output
+          echo "Coverage Summary:"
+          tracey -v | grep -E 'Coverage|rules' | head -5 || true
+
+          # Check report sizes
+          HTML_SIZE=$(wc -c < tracey-report.html)
+          JSON_SIZE=$(wc -c < tracey-report.json)
+          echo "✓ Generated HTML report: $HTML_SIZE bytes"
+          echo "✓ Generated JSON report: $JSON_SIZE bytes"
+
+          ls -la tracey-report.*
+        continue-on-error: true
+
+      - name: Upload Tracey Full Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tracey-report-complete
+          path: |
+            tracey-report.html
+            tracey-report.json
+          if-no-files-found: ignore
