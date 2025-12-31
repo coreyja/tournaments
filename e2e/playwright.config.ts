@@ -45,6 +45,8 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
       env: {
+        RUST_BACKTRACE: '1',
+        RUST_LOG: 'tournaments=debug',
         DATABASE_URL: DATABASE_URL,
         // Configure app to use mock OAuth server
         GITHUB_OAUTH_URL: `${MOCK_GITHUB_URL}/login/oauth/authorize`,
