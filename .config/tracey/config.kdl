@@ -1,0 +1,20 @@
+// Tracey configuration for Battlesnake Tournaments
+// See: https://github.com/bearcove/tracey
+
+spec {
+  name "web-app"
+
+  // Specification files location
+  rules_glob "specs/web_app/**/*.md"
+
+  // Rust server implementation
+  include "server/src/**/*.rs"
+
+  // E2E tests (TypeScript/Playwright)
+  include "e2e/tests/**/*.ts"
+
+  // Exclude build artifacts and dependencies
+  exclude "target/**"
+  exclude "node_modules/**"
+  exclude "e2e/node_modules/**"
+}

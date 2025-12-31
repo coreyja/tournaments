@@ -22,7 +22,12 @@ use crate::{
 
 use super::auth::CurrentSession;
 
-// Route handler for initiating GitHub OAuth flow
+/// Route handler for initiating GitHub OAuth flow
+///
+/// [impl auth.oauth.initiation]
+/// [impl auth.oauth.state.generation]
+/// [impl auth.oauth.state.storage]
+/// [impl auth.oauth.scope]
 pub async fn github_auth(
     State(state): State<AppState>,
     current_session: CurrentSession,
@@ -52,7 +57,19 @@ pub async fn github_auth(
     Ok(Redirect::to(&auth_url))
 }
 
-// Route handler for GitHub OAuth callback
+/// Route handler for GitHub OAuth callback
+///
+/// [impl auth.oauth.callback.route]
+/// [impl auth.oauth.state.validation]
+/// [impl auth.oauth.state.mismatch]
+/// [impl auth.oauth.state.missing]
+/// [impl auth.oauth.state.cleanup]
+/// [impl auth.oauth.token.exchange]
+/// [impl auth.oauth.user.fetch]
+/// [impl auth.oauth.user.creation]
+/// [impl auth.oauth.user.update]
+/// [impl auth.oauth.session.association]
+/// [impl auth.oauth.success.redirect]
 pub async fn github_auth_callback(
     State(state): State<AppState>,
     Query(params): Query<GitHubAuthParams>,
@@ -142,7 +159,12 @@ pub async fn github_auth_callback(
     Ok(Redirect::to("/"))
 }
 
-// Route handler for logging out
+/// Route handler for logging out
+///
+/// [impl auth.logout.route]
+/// [impl auth.logout.session.disassociation]
+/// [impl auth.logout.redirect]
+/// [impl auth.logout.flash]
 pub async fn logout(
     State(state): State<AppState>,
     current_session: CurrentSession,

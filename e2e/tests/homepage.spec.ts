@@ -1,6 +1,20 @@
 import { test, expect } from '../fixtures/test';
 
+/**
+ * Homepage - Authenticated User
+ *
+ * [verify homepage.auth.welcome]
+ * [verify homepage.auth.avatar]
+ * [verify homepage.auth.profile_link]
+ * [verify homepage.auth.battlesnakes_link]
+ * [verify homepage.auth.logout_link]
+ * [verify homepage.auth.no_login_link]
+ */
 test.describe('Homepage - Authenticated User', () => {
+  /**
+   * [verify homepage.auth.welcome]
+   * [verify homepage.auth.avatar]
+   */
   test('displays user info when logged in', async ({ authenticatedPage, mockUser }) => {
     await authenticatedPage.goto('/');
 
@@ -12,6 +26,11 @@ test.describe('Homepage - Authenticated User', () => {
     await expect(avatar).toBeVisible();
   });
 
+  /**
+   * [verify homepage.auth.profile_link]
+   * [verify homepage.auth.battlesnakes_link]
+   * [verify homepage.auth.logout_link]
+   */
   test('shows navigation links for authenticated users', async ({ authenticatedPage }) => {
     await authenticatedPage.goto('/');
 
@@ -25,6 +44,9 @@ test.describe('Homepage - Authenticated User', () => {
     await expect(authenticatedPage.getByRole('link', { name: 'Logout' })).toBeVisible();
   });
 
+  /**
+   * [verify homepage.auth.no_login_link]
+   */
   test('does not show login link when authenticated', async ({ authenticatedPage }) => {
     await authenticatedPage.goto('/');
 

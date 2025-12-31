@@ -1,6 +1,21 @@
 import { test, expect } from '../fixtures/test';
 
+/**
+ * Create Battlesnake
+ *
+ * [verify battlesnake.create.form_route]
+ * [verify battlesnake.create.form_auth_required]
+ * [verify battlesnake.create.post_route]
+ * [verify battlesnake.create.fields]
+ * [verify battlesnake.create.success_redirect]
+ * [verify battlesnake.create.success_flash]
+ */
 test.describe('Create Battlesnake', () => {
+  /**
+   * [verify battlesnake.create.form_route]
+   * [verify battlesnake.create.fields]
+   * [verify battlesnake.create.success_redirect]
+   */
   test('can create a battlesnake with valid data', async ({ authenticatedPage }) => {
     const uniqueName = `Test Snake ${Date.now()}`;
     const snakeUrl = 'https://example.com/my-snake';
@@ -24,6 +39,9 @@ test.describe('Create Battlesnake', () => {
     await expect(authenticatedPage.getByText(uniqueName)).toBeVisible();
   });
 
+  /**
+   * [verify battlesnake.model.visibility]
+   */
   test('can create a private battlesnake', async ({ authenticatedPage }) => {
     const uniqueName = `Private Snake ${Date.now()}`;
     const snakeUrl = 'https://example.com/private-snake';
@@ -40,6 +58,9 @@ test.describe('Create Battlesnake', () => {
     await expect(authenticatedPage.getByText(uniqueName)).toBeVisible();
   });
 
+  /**
+   * [verify battlesnake.create.success_flash]
+   */
   test('shows success flash message after creating battlesnake', async ({ authenticatedPage }) => {
     const uniqueName = `Flash Test Snake ${Date.now()}`;
 
@@ -57,6 +78,9 @@ test.describe('Create Battlesnake', () => {
     await expect(successAlert).toContainText('Battlesnake created successfully!');
   });
 
+  /**
+   * [verify battlesnake.create.form_auth_required]
+   */
   test('new form requires authentication', async ({ page }) => {
     // Without authentication, should get 401
     const response = await page.goto('/battlesnakes/new');

@@ -23,6 +23,12 @@ use crate::{
 ///
 /// This struct contains the current session and optional user.
 /// The session is always present, but the user may be None if not logged in.
+///
+/// [impl auth.session.creation]
+/// [impl auth.session.cookie.name]
+/// [impl auth.session.cookie.httponly]
+/// [impl auth.session.cookie.secure]
+/// [impl auth.session.cookie.samesite]
 pub struct CurrentSession {
     pub session: Session,
     pub user: Option<User>,
@@ -119,6 +125,9 @@ impl FromRequestParts<AppState> for CurrentSession {
 /// This extractor will return a 401 Unauthorized error if the user is not logged in.
 /// Use this extractor in route handlers that require authentication.
 ///
+/// [impl auth.protected.extraction]
+/// [impl auth.protected.unauthorized]
+///
 /// Example:
 /// ```
 /// async fn protected_route(
@@ -134,6 +143,8 @@ pub struct CurrentUser(pub User);
 ///
 /// Unlike CurrentUser, this won't return an error if the user is not logged in.
 /// Instead, it will return Option<User> which will be None if not logged in.
+///
+/// [impl auth.optional.extraction]
 pub struct OptionalUser(pub Option<User>);
 
 impl FromRequestParts<AppState> for OptionalUser {

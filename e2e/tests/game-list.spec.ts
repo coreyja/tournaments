@@ -1,5 +1,23 @@
 import { test, expect } from '../fixtures/test';
 
+/**
+ * Game List
+ *
+ * [verify game.list.route]
+ * [verify game.list.auth_required]
+ * [verify game.list.empty_state]
+ * [verify game.list.display_board_size]
+ * [verify game.list.display_game_type]
+ * [verify game.list.view_link]
+ * [verify game.list.create_link]
+ * [verify game.view.route]
+ * [verify game.view.display_board_size]
+ * [verify game.view.display_game_type]
+ * [verify game.view.results_table]
+ * [verify game.view.results_placement]
+ * [verify game.view.results_name]
+ * [verify game.view.placement_badges]
+ */
 test.describe('Game List', () => {
   test('shows games list page', async ({ authenticatedPage }) => {
     await authenticatedPage.goto('/games');

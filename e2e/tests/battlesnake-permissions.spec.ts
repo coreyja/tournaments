@@ -1,6 +1,18 @@
 import { test, expect, createMockUser } from '../fixtures/test';
 
+/**
+ * Battlesnake Permissions
+ *
+ * [verify battlesnake.edit.form_not_found]
+ * [verify battlesnake.edit.post_ownership]
+ * [verify battlesnake.delete.ownership]
+ * [verify battlesnake.permission.forbidden_status]
+ * [verify battlesnake.visibility.list_own_only]
+ */
 test.describe('Battlesnake Permissions', () => {
+  /**
+   * [verify battlesnake.edit.form_not_found]
+   */
   test('cannot edit non-existent battlesnake (404)', async ({ authenticatedPage }) => {
     // Try to edit a battlesnake that doesn't exist
     const nonExistentId = '00000000-0000-0000-0000-000000000000';
@@ -9,6 +21,9 @@ test.describe('Battlesnake Permissions', () => {
     expect(response?.status()).toBe(404);
   });
 
+  /**
+   * [verify battlesnake.permission.forbidden_status]
+   */
   test('cannot update non-existent battlesnake (403 or 404)', async ({ authenticatedPage }) => {
     // First go to create page to get a valid form structure
     await authenticatedPage.goto('/battlesnakes/new');
@@ -30,6 +45,9 @@ test.describe('Battlesnake Permissions', () => {
     expect(response.status()).toBe(403);
   });
 
+  /**
+   * [verify battlesnake.permission.forbidden_status]
+   */
   test('cannot delete non-existent battlesnake (403)', async ({ authenticatedPage }) => {
     const nonExistentId = '00000000-0000-0000-0000-000000000000';
 
@@ -41,21 +59,33 @@ test.describe('Battlesnake Permissions', () => {
     expect(response.status()).toBe(403);
   });
 
+  /**
+   * [verify battlesnake.create.form_auth_required]
+   */
   test('create page requires authentication', async ({ page }) => {
     const response = await page.goto('/battlesnakes/new');
     expect(response?.status()).toBe(401);
   });
 
+  /**
+   * [verify battlesnake.list.auth_required]
+   */
   test('list page requires authentication', async ({ page }) => {
     const response = await page.goto('/battlesnakes');
     expect(response?.status()).toBe(401);
   });
 
+  /**
+   * [verify battlesnake.edit.form_auth_required]
+   */
   test('edit page requires authentication', async ({ page }) => {
     const response = await page.goto('/battlesnakes/00000000-0000-0000-0000-000000000000/edit');
     expect(response?.status()).toBe(401);
   });
 
+  /**
+   * [verify battlesnake.create.post_auth_required]
+   */
   test('create POST requires authentication', async ({ page }) => {
     const response = await page.request.post('/battlesnakes', {
       form: {
@@ -67,6 +97,9 @@ test.describe('Battlesnake Permissions', () => {
     expect(response.status()).toBe(401);
   });
 
+  /**
+   * [verify battlesnake.edit.post_auth_required]
+   */
   test('update POST requires authentication', async ({ page }) => {
     const response = await page.request.post('/battlesnakes/00000000-0000-0000-0000-000000000000/update', {
       form: {
@@ -78,11 +111,17 @@ test.describe('Battlesnake Permissions', () => {
     expect(response.status()).toBe(401);
   });
 
+  /**
+   * [verify battlesnake.delete.auth_required]
+   */
   test('delete POST requires authentication', async ({ page }) => {
     const response = await page.request.post('/battlesnakes/00000000-0000-0000-0000-000000000000/delete');
     expect(response.status()).toBe(401);
   });
 
+  /**
+   * [verify battlesnake.visibility.list_own_only]
+   */
   test('can only see own battlesnakes in list', async ({ authenticatedPage, loginAsUser }) => {
     const user1SnakeName = `User1 Snake ${Date.now()}`;
     const user2SnakeName = `User2 Snake ${Date.now()}`;

@@ -1,6 +1,19 @@
 import { test, expect } from '../fixtures/test';
 
+/**
+ * Battlesnake Delete
+ *
+ * [verify battlesnake.delete.route]
+ * [verify battlesnake.delete.confirmation]
+ * [verify battlesnake.delete.success_redirect]
+ * [verify battlesnake.delete.cancel_preserves]
+ */
 test.describe('Battlesnake Delete', () => {
+  /**
+   * [verify battlesnake.delete.route]
+   * [verify battlesnake.delete.confirmation]
+   * [verify battlesnake.delete.success_redirect]
+   */
   test('can delete a battlesnake from the list', async ({ authenticatedPage }) => {
     const uniqueName = `Delete Me Snake ${Date.now()}`;
 
@@ -31,6 +44,9 @@ test.describe('Battlesnake Delete', () => {
     await expect(authenticatedPage.getByText(uniqueName)).not.toBeVisible();
   });
 
+  /**
+   * [verify battlesnake.delete.cancel_preserves]
+   */
   test('cancel delete keeps the battlesnake', async ({ authenticatedPage }) => {
     const uniqueName = `Keep Me Snake ${Date.now()}`;
 
@@ -54,6 +70,9 @@ test.describe('Battlesnake Delete', () => {
     await expect(authenticatedPage.getByText(uniqueName)).toBeVisible();
   });
 
+  /**
+   * [verify battlesnake.delete.route]
+   */
   test('deleting one snake does not affect others', async ({ authenticatedPage }) => {
     const keepName = `Keep This Snake ${Date.now()}`;
     const deleteName = `Delete This Snake ${Date.now()}`;
@@ -90,6 +109,10 @@ test.describe('Battlesnake Delete', () => {
     await expect(authenticatedPage.getByText(keepName)).toBeVisible();
   });
 
+  /**
+   * [verify battlesnake.delete.success_redirect]
+   * [verify battlesnake.list.empty_state]
+   */
   test('delete returns to list with empty state when last snake deleted', async ({ authenticatedPage }) => {
     const uniqueName = `Last Snake ${Date.now()}`;
 

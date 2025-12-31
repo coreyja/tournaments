@@ -1,6 +1,19 @@
 import { test, expect, createMockUser } from '../fixtures/test';
 
+/**
+ * Battlesnake Validation
+ *
+ * [verify battlesnake.name.unique_per_user]
+ * [verify battlesnake.name.unique_across_users]
+ * [verify battlesnake.name.reuse_after_delete]
+ * [verify battlesnake.create.duplicate_name_error]
+ * [verify battlesnake.edit.duplicate_name_error]
+ */
 test.describe('Battlesnake Validation', () => {
+  /**
+   * [verify battlesnake.name.unique_per_user]
+   * [verify battlesnake.create.duplicate_name_error]
+   */
   test('cannot create battlesnake with duplicate name', async ({ authenticatedPage }) => {
     const duplicateName = `Duplicate Snake ${Date.now()}`;
 
@@ -24,6 +37,10 @@ test.describe('Battlesnake Validation', () => {
     await expect(authenticatedPage).toHaveURL('/battlesnakes/new');
   });
 
+  /**
+   * [verify battlesnake.name.unique_per_user]
+   * [verify battlesnake.edit.duplicate_name_error]
+   */
   test('cannot update battlesnake to use duplicate name', async ({ authenticatedPage }) => {
     const firstName = `First Snake ${Date.now()}`;
     const secondName = `Second Snake ${Date.now()}`;
@@ -52,6 +69,9 @@ test.describe('Battlesnake Validation', () => {
     await expect(authenticatedPage).toHaveURL(/\/battlesnakes\/.*\/edit/);
   });
 
+  /**
+   * [verify battlesnake.name.reuse_after_delete]
+   */
   test('can use same name after deleting original', async ({ authenticatedPage }) => {
     const reuseName = `Reuse Name Snake ${Date.now()}`;
 
@@ -81,6 +101,9 @@ test.describe('Battlesnake Validation', () => {
     await expect(authenticatedPage.getByText(reuseName)).toBeVisible();
   });
 
+  /**
+   * [verify battlesnake.name.unique_across_users]
+   */
   test('different users can have same snake name', async ({ authenticatedPage, loginAsUser }) => {
     const sharedName = `Shared Name Snake ${Date.now()}`;
 

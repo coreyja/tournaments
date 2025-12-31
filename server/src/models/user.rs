@@ -5,7 +5,13 @@ use uuid::Uuid;
 
 use crate::github::auth::{GitHubTokenResponse, GitHubUser};
 
-// User model for our application
+/// User model for our application
+///
+/// [impl auth.user.model]
+/// [impl profile.display.login]
+/// [impl profile.display.avatar]
+/// [impl profile.display.name]
+/// [impl profile.display.email]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     pub user_id: Uuid,
@@ -19,6 +25,10 @@ pub struct User {
 }
 
 // Database functions for user management
+
+/// Get user by ID
+///
+/// [impl auth.user.get_by_id]
 pub async fn get_user_by_id(pool: &PgPool, user_id: Uuid) -> cja::Result<Option<User>> {
     let user = sqlx::query_as!(
         User,
@@ -44,6 +54,10 @@ pub async fn get_user_by_id(pool: &PgPool, user_id: Uuid) -> cja::Result<Option<
     Ok(user)
 }
 
+/// Create or update user from GitHub OAuth
+///
+/// [impl auth.oauth.success.user_creation]
+/// [impl auth.user.upsert]
 pub async fn create_or_update_user(
     pool: &PgPool,
     github_user: GitHubUser,

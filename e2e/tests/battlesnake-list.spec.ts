@@ -1,6 +1,22 @@
 import { test, expect } from '../fixtures/test';
 
+/**
+ * Battlesnake List
+ *
+ * [verify battlesnake.list.route]
+ * [verify battlesnake.list.auth_required]
+ * [verify battlesnake.list.empty_state]
+ * [verify battlesnake.list.display_name]
+ * [verify battlesnake.list.display_url]
+ * [verify battlesnake.list.display_visibility]
+ * [verify battlesnake.list.edit_button]
+ * [verify battlesnake.list.delete_button]
+ * [verify battlesnake.list.add_button]
+ */
 test.describe('Battlesnake List', () => {
+  /**
+   * [verify battlesnake.list.empty_state]
+   */
   test('displays empty state when user has no battlesnakes', async ({ authenticatedPage }) => {
     await authenticatedPage.goto('/battlesnakes');
 
@@ -8,6 +24,11 @@ test.describe('Battlesnake List', () => {
     await expect(authenticatedPage.getByText("You don't have any battlesnakes yet.")).toBeVisible();
   });
 
+  /**
+   * [verify battlesnake.list.display_name]
+   * [verify battlesnake.list.display_url]
+   * [verify battlesnake.list.display_visibility]
+   */
   test('displays battlesnakes after creation', async ({ authenticatedPage }) => {
     const uniqueName = `List Test Snake ${Date.now()}`;
 
@@ -27,6 +48,9 @@ test.describe('Battlesnake List', () => {
     await expect(authenticatedPage.getByText('Public')).toBeVisible();
   });
 
+  /**
+   * [verify battlesnake.list.display_visibility]
+   */
   test('shows correct visibility badges', async ({ authenticatedPage }) => {
     const publicName = `Public Snake ${Date.now()}`;
     const privateName = `Private Snake ${Date.now()}`;
@@ -56,6 +80,10 @@ test.describe('Battlesnake List', () => {
     await expect(privateRow.locator('.badge', { hasText: 'Private' })).toBeVisible();
   });
 
+  /**
+   * [verify battlesnake.list.edit_button]
+   * [verify battlesnake.list.delete_button]
+   */
   test('shows edit and delete buttons for each snake', async ({ authenticatedPage }) => {
     const uniqueName = `Actions Test Snake ${Date.now()}`;
 
@@ -74,6 +102,9 @@ test.describe('Battlesnake List', () => {
     await expect(snakeRow.getByRole('button', { name: 'Delete' })).toBeVisible();
   });
 
+  /**
+   * [verify battlesnake.list.add_button]
+   */
   test('has Add New Battlesnake button', async ({ authenticatedPage }) => {
     await authenticatedPage.goto('/battlesnakes');
 
@@ -82,6 +113,9 @@ test.describe('Battlesnake List', () => {
     await expect(addButton).toHaveAttribute('href', '/battlesnakes/new');
   });
 
+  /**
+   * [verify battlesnake.list.auth_required]
+   */
   test('list page requires authentication', async ({ page }) => {
     const response = await page.goto('/battlesnakes');
     expect(response?.status()).toBe(401);

@@ -1,5 +1,25 @@
 import { test, expect } from '../fixtures/test';
 
+/**
+ * Profile Page
+ *
+ * [verify profile.route]
+ * [verify profile.auth_required]
+ * [verify profile.title]
+ * [verify profile.display.login]
+ * [verify profile.display.avatar]
+ * [verify profile.display.name]
+ * [verify profile.display.email]
+ * [verify profile.details.heading]
+ * [verify profile.details.github_id]
+ * [verify profile.details.created_at]
+ * [verify profile.details.updated_at]
+ * [verify profile.nav.battlesnakes]
+ * [verify profile.nav.create_game]
+ * [verify profile.nav.view_games]
+ * [verify profile.nav.home]
+ * [verify profile.nav.logout]
+ */
 test.describe('Profile Page', () => {
   test('displays user information', async ({ authenticatedPage, mockUser }) => {
     await authenticatedPage.goto('/me');

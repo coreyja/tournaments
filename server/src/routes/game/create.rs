@@ -22,7 +22,11 @@ use crate::{
     state::AppState,
 };
 
-// Initial game creation page - redirect to a new flow
+/// Initial game creation page - redirect to a new flow
+///
+/// [impl games.create.initiation]
+/// [impl games.create.auth_required]
+/// [impl games.create.flow_creation]
 #[debug_handler]
 pub async fn new_game(
     State(state): State<AppState>,
@@ -37,7 +41,14 @@ pub async fn new_game(
     Ok(Redirect::to(&format!("/games/flow/{}", flow.flow_id)).into_response())
 }
 
-// Game create form - show the game creation form with the flow state
+/// Game create form - show the game creation form with the flow state
+///
+/// [impl games.create.flow_route]
+/// [impl games.create.board_size_selection]
+/// [impl games.create.game_type_selection]
+/// [impl games.create.snake_display]
+/// [impl games.create.snake_selection]
+/// [impl games.search.display]
 #[debug_handler]
 pub async fn show_game_flow(
     State(state): State<AppState>,
@@ -203,7 +214,9 @@ pub struct ConfigureGameForm {
     pub game_type: String,
 }
 
-// Reset the snake selections in the flow
+/// Reset the snake selections in the flow
+///
+/// [impl games.create.reset_selection]
 #[debug_handler]
 pub async fn reset_snake_selections(
     State(state): State<AppState>,
@@ -229,7 +242,10 @@ pub async fn reset_snake_selections(
     Ok(Redirect::to(&format!("/games/flow/{}", flow_id)).into_response())
 }
 
-// Add a battlesnake to the selection
+/// Add a battlesnake to the selection
+///
+/// [impl games.create.add_snake]
+/// [impl games.snakes.max_constraint]
 #[debug_handler]
 pub async fn add_battlesnake(
     State(state): State<AppState>,
@@ -268,7 +284,9 @@ pub async fn add_battlesnake(
     Ok(Redirect::to(&format!("/games/flow/{}", flow_id)).into_response())
 }
 
-// Remove a battlesnake from the selection
+/// Remove a battlesnake from the selection
+///
+/// [impl games.create.remove_snake]
 #[debug_handler]
 pub async fn remove_battlesnake(
     State(state): State<AppState>,
@@ -300,6 +318,10 @@ pub struct SearchQuery {
     pub q: Option<String>,
 }
 
+/// Search for public battlesnakes
+///
+/// [impl games.search.route]
+/// [impl games.search.public_only]
 #[debug_handler]
 pub async fn search_battlesnakes(
     State(state): State<AppState>,
@@ -326,7 +348,13 @@ pub async fn search_battlesnakes(
     Ok(Redirect::to(&format!("/games/flow/{}", flow_id)).into_response())
 }
 
-// Create the game with selected snakes
+/// Create the game with selected snakes
+///
+/// [impl games.create.submission]
+/// [impl games.snakes.min_constraint]
+/// [impl games.create.success_redirect]
+/// [impl games.create.success_flash]
+/// [impl games.create.error_flash]
 #[debug_handler]
 pub async fn create_game(
     State(state): State<AppState>,
@@ -400,7 +428,9 @@ pub async fn create_game(
     }
 }
 
-// Helper function to render search results
+/// Helper function to render search results
+///
+/// [impl games.search.display]
 async fn render_search_results(flow: &GameCreationFlow, db: &sqlx::PgPool) -> maud::Markup {
     // Execute the search
     let search_results = flow

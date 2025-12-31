@@ -73,6 +73,15 @@ pub fn routes(app_state: AppState) -> axum::Router {
         .with_state(app_state)
 }
 
+/// Homepage route
+///
+/// [impl homepage.route]
+/// [impl homepage.public]
+/// [impl homepage.unauth.message]
+/// [impl homepage.unauth.login_link]
+/// [impl homepage.auth.welcome]
+/// [impl homepage.auth.profile_link]
+/// [impl homepage.auth.logout_link]
 async fn root_page(
     _: State<AppState>,
     auth::OptionalUser(user): auth::OptionalUser,
@@ -111,6 +120,23 @@ async fn root_page(
 }
 
 /// Profile page that requires authentication
+///
+/// [impl profile.route]
+/// [impl profile.auth_required]
+/// [impl profile.title]
+/// [impl profile.display.login]
+/// [impl profile.display.avatar]
+/// [impl profile.display.name]
+/// [impl profile.display.email]
+/// [impl profile.details.heading]
+/// [impl profile.details.github_id]
+/// [impl profile.details.created_at]
+/// [impl profile.details.updated_at]
+/// [impl profile.nav.battlesnakes]
+/// [impl profile.nav.create_game]
+/// [impl profile.nav.view_games]
+/// [impl profile.nav.home]
+/// [impl profile.nav.logout]
 async fn profile_page(
     auth::CurrentUser(user): auth::CurrentUser,
     page_factory: PageFactory,

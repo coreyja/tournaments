@@ -4,7 +4,10 @@ use sqlx::{PgPool, Type};
 use std::str::FromStr;
 use uuid::Uuid;
 
-// Visibility enum for battlesnakes
+/// Visibility enum for battlesnakes
+///
+/// [impl battlesnakes.visibility.enum]
+/// [impl battlesnakes.visibility.default]
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Type)]
 #[sqlx(type_name = "text", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
@@ -38,7 +41,9 @@ impl FromStr for Visibility {
 
 // Default implementation for Visibility - default to Public
 
-// Battlesnake model for our application
+/// Battlesnake model for our application
+///
+/// [impl battlesnakes.model.fields]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Battlesnake {
     pub battlesnake_id: Uuid,
@@ -68,7 +73,9 @@ pub struct UpdateBattlesnake {
 
 // Database functions for battlesnake management
 
-// Get all battlesnakes for a user
+/// Get all battlesnakes for a user
+///
+/// [impl battlesnakes.model.get_by_user]
 pub async fn get_battlesnakes_by_user_id(
     pool: &PgPool,
     user_id: Uuid,
@@ -97,7 +104,9 @@ pub async fn get_battlesnakes_by_user_id(
     Ok(battlesnakes)
 }
 
-// Get a single battlesnake by ID
+/// Get a single battlesnake by ID
+///
+/// [impl battlesnakes.model.get_by_id]
 pub async fn get_battlesnake_by_id(
     pool: &PgPool,
     battlesnake_id: Uuid,
@@ -125,7 +134,10 @@ pub async fn get_battlesnake_by_id(
     Ok(battlesnake)
 }
 
-// Create a new battlesnake
+/// Create a new battlesnake
+///
+/// [impl battlesnakes.model.create]
+/// [impl battlesnakes.name.unique_per_user]
 pub async fn create_battlesnake(
     pool: &PgPool,
     user_id: Uuid,
@@ -180,7 +192,10 @@ pub async fn create_battlesnake(
     }
 }
 
-// Update an existing battlesnake
+/// Update an existing battlesnake
+///
+/// [impl battlesnakes.model.update]
+/// [impl battlesnakes.name.unique_per_user]
 pub async fn update_battlesnake(
     pool: &PgPool,
     battlesnake_id: Uuid,
@@ -238,7 +253,9 @@ pub async fn update_battlesnake(
     }
 }
 
-// Delete a battlesnake
+/// Delete a battlesnake
+///
+/// [impl battlesnakes.model.delete]
 pub async fn delete_battlesnake(
     pool: &PgPool,
     battlesnake_id: Uuid,
@@ -261,7 +278,9 @@ pub async fn delete_battlesnake(
     Ok(())
 }
 
-// Check if a battlesnake belongs to a user
+/// Check if a battlesnake belongs to a user
+///
+/// [impl battlesnakes.model.belongs_to_user]
 pub async fn belongs_to_user(
     pool: &PgPool,
     battlesnake_id: Uuid,
@@ -287,7 +306,10 @@ pub async fn belongs_to_user(
     Ok(result.exists)
 }
 
-// Get all public battlesnakes (for other users to select)
+/// Get all public battlesnakes (for other users to select)
+///
+/// [impl battlesnakes.model.get_public]
+/// [impl battlesnakes.visibility.public_access]
 pub async fn get_public_battlesnakes(pool: &PgPool) -> cja::Result<Vec<Battlesnake>> {
     let battlesnakes = sqlx::query_as!(
         Battlesnake,
@@ -312,7 +334,10 @@ pub async fn get_public_battlesnakes(pool: &PgPool) -> cja::Result<Vec<Battlesna
     Ok(battlesnakes)
 }
 
-// Get all battlesnakes available to a user (their own + public ones)
+/// Get all battlesnakes available to a user (their own + public ones)
+///
+/// [impl battlesnakes.model.get_available]
+/// [impl battlesnakes.visibility.own_plus_public]
 pub async fn get_available_battlesnakes(
     pool: &PgPool,
     user_id: Uuid,

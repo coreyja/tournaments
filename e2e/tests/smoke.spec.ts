@@ -1,5 +1,13 @@
 import { test, expect } from '../fixtures/test';
 
+/**
+ * Smoke Tests
+ *
+ * [verify homepage.route]
+ * [verify homepage.public]
+ * [verify homepage.unauth.message]
+ * [verify homepage.unauth.login_link]
+ */
 test.describe('Smoke Tests', () => {
   test('homepage loads successfully', async ({ page }) => {
     await page.goto('/');

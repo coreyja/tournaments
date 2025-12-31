@@ -1,5 +1,30 @@
 import { test, expect, createMockUser } from '../fixtures/test';
 
+/**
+ * Create Game
+ *
+ * [verify game.create.new_route]
+ * [verify game.create.new_auth_required]
+ * [verify game.create.flow_redirect]
+ * [verify game.flow.route]
+ * [verify game.flow.board_size_selector]
+ * [verify game.flow.game_type_selector]
+ * [verify game.flow.user_snakes]
+ * [verify game.flow.no_snakes_warning]
+ * [verify game.flow.selection_counter]
+ * [verify game.flow.no_selection_warning]
+ * [verify game.flow.create_button_hidden]
+ * [verify game.flow.add_snake.route]
+ * [verify game.flow.remove_snake.route]
+ * [verify game.flow.reset.route]
+ * [verify game.flow.reset.clears_all]
+ * [verify game.flow.search.route]
+ * [verify game.flow.search.public_only]
+ * [verify game.flow.search.private_hidden]
+ * [verify game.create.success_redirect]
+ * [verify game.battlesnakes.min]
+ * [verify game.battlesnakes.max]
+ */
 test.describe('Create Game', () => {
   test('can create a game with one battlesnake', async ({ authenticatedPage }) => {
     const snakeName = `Single Snake ${Date.now()}`;

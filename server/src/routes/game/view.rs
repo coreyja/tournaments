@@ -17,7 +17,13 @@ use crate::{
     state::AppState,
 };
 
-// Display game details
+/// Display game details
+///
+/// [impl games.view.route]
+/// [impl games.view.auth_required]
+/// [impl games.view.display_config]
+/// [impl games.view.display_snakes]
+/// [impl games.view.display_placements]
 #[debug_handler]
 pub async fn view_game(
     State(state): State<AppState>,
@@ -105,7 +111,13 @@ pub async fn view_game(
     ))
 }
 
-// List all games
+/// List all games
+///
+/// [impl games.list.route]
+/// [impl games.list.auth_required]
+/// [impl games.list.display_table]
+/// [impl games.list.empty_state]
+/// [impl games.list.winner_display]
 #[debug_handler]
 pub async fn list_games(
     State(state): State<AppState>,
