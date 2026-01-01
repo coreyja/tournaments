@@ -17,6 +17,7 @@ test.describe('Battlesnake Edit', () => {
     await snakeRow.getByRole('link', { name: 'Edit', exact: true }).click();
 
     // Should be on edit page with correct heading
+    // web-app[verify battlesnake.edit.form-route]
     await expect(authenticatedPage.getByRole('heading', { name: `Edit Battlesnake: ${uniqueName}` })).toBeVisible();
   });
 
@@ -36,6 +37,7 @@ test.describe('Battlesnake Edit', () => {
     await snakeRow.getByRole('link', { name: 'Edit', exact: true }).click();
 
     // Form should be pre-filled
+    // web-app[verify battlesnake.edit.form-prefilled]
     await expect(authenticatedPage.getByLabel('Name')).toHaveValue(uniqueName);
     await expect(authenticatedPage.getByLabel('URL')).toHaveValue(originalUrl);
     await expect(authenticatedPage.getByLabel('Visibility')).toHaveValue('private');
@@ -61,6 +63,7 @@ test.describe('Battlesnake Edit', () => {
     await authenticatedPage.getByRole('button', { name: 'Update Battlesnake' }).click();
 
     // Should redirect to list
+    // web-app[verify battlesnake.edit.success-redirect]
     await expect(authenticatedPage).toHaveURL('/battlesnakes');
 
     // Updated name should appear, original should not
@@ -137,6 +140,7 @@ test.describe('Battlesnake Edit', () => {
     await authenticatedPage.getByRole('link', { name: 'Cancel' }).click();
 
     // Should be back on list with original name unchanged
+    // web-app[verify battlesnake.edit.cancel]
     await expect(authenticatedPage).toHaveURL('/battlesnakes');
     await expect(authenticatedPage.getByText(originalName)).toBeVisible();
     await expect(authenticatedPage.getByText('Should Not Save')).not.toBeVisible();

@@ -8,6 +8,7 @@ test.describe('Logout Flow', () => {
     await authenticatedPage.getByRole('link', { name: 'Logout' }).click();
 
     // Should redirect to homepage
+    // web-app[verify auth.logout.redirect]
     await expect(authenticatedPage).toHaveURL('/');
   });
 
@@ -22,6 +23,7 @@ test.describe('Logout Flow', () => {
     await authenticatedPage.waitForURL('/');
 
     // Should now see the login link instead
+    // web-app[verify auth.logout.session.disassociation]
     await expect(authenticatedPage.getByRole('link', { name: 'Login with GitHub' })).toBeVisible();
     await expect(authenticatedPage.getByText('You are not logged in.')).toBeVisible();
   });
@@ -38,6 +40,7 @@ test.describe('Logout Flow', () => {
 
     // Try to access /me again - should get 401
     const response = await authenticatedPage.goto('/me');
+    // web-app[verify auth.protected.unauthorized]
     expect(response?.status()).toBe(401);
   });
 });

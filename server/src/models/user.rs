@@ -9,11 +9,17 @@ use crate::github::auth::{GitHubTokenResponse, GitHubUser};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     pub user_id: Uuid,
+    // web-app[impl auth.user.github-id]
     pub external_github_id: i64,
+    // web-app[impl auth.user.github-login]
     pub github_login: String,
+    // web-app[impl auth.user.avatar]
     pub github_avatar_url: Option<String>,
+    // web-app[impl auth.user.name]
     pub github_name: Option<String>,
+    // web-app[impl auth.user.email]
     pub github_email: Option<String>,
+    // web-app[impl auth.user.timestamps]
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }

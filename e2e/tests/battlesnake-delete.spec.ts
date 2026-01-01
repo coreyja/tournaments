@@ -27,6 +27,7 @@ test.describe('Battlesnake Delete', () => {
     await snakeRow.getByRole('button', { name: 'Delete' }).click();
 
     // Should redirect to list and snake should be gone
+    // web-app[verify battlesnake.delete.success-redirect]
     await expect(authenticatedPage).toHaveURL('/battlesnakes');
     await expect(authenticatedPage.getByText(uniqueName)).not.toBeVisible();
   });
@@ -51,6 +52,7 @@ test.describe('Battlesnake Delete', () => {
     await snakeRow.getByRole('button', { name: 'Delete' }).click();
 
     // Snake should still be visible (page didn't navigate)
+    // web-app[verify battlesnake.delete.cancel-preserves]
     await expect(authenticatedPage.getByText(uniqueName)).toBeVisible();
   });
 

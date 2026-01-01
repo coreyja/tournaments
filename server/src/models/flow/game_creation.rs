@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::models::battlesnake::{self, Battlesnake};
 use crate::models::game::{self, CreateGameWithSnakes, GameBoardSize, GameType};
 
+// web-app[impl game.flow.model]
 // Flow model for the game creation process
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GameCreationFlow {
@@ -175,6 +176,7 @@ impl GameCreationFlow {
         self.selected_battlesnake_ids.len()
     }
 
+    // web-app[impl game.create.validation]
     // Validate the flow state before creating a game
     pub fn validate(&self) -> cja::Result<()> {
         if self.selected_battlesnake_ids.is_empty() {
@@ -226,6 +228,7 @@ impl GameCreationFlow {
             .wrap_err("Failed to get user's battlesnakes")
     }
 
+    // web-app[impl game.flow.search.public-only]
     // Search for public battlesnakes
     pub async fn search_public_battlesnakes(&self, pool: &PgPool) -> cja::Result<Vec<Battlesnake>> {
         if let Some(query) = &self.search_query {

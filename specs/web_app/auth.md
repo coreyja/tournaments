@@ -8,7 +8,7 @@ r[auth.session.creation]
 When a request is received without a valid session cookie, the system MUST create a new session and set the session cookie.
 
 r[auth.session.cookie.name]
-The session cookie MUST be named `tournaments_session_id`.
+The session cookie MUST be named `tournaments-session-id`.
 
 r[auth.session.cookie.httponly]
 The session cookie MUST have the HttpOnly flag set to prevent client-side JavaScript access.
@@ -90,10 +90,10 @@ If a user attempts to access a protected route without authentication, the syste
 
 ## User Data Model
 
-r[auth.user.github_id]
+r[auth.user.github-id]
 Each user MUST have a unique external GitHub ID.
 
-r[auth.user.github_login]
+r[auth.user.github-login]
 Each user MUST have their GitHub login (username) stored.
 
 r[auth.user.avatar]
@@ -106,4 +106,4 @@ r[auth.user.email]
 The user's GitHub email SHOULD be stored if available.
 
 r[auth.user.timestamps]
-Each user MUST have `created_at` and `updated_at` timestamps.
+Each user MUST have `created-at` and `updated-at` timestamps.

@@ -64,8 +64,11 @@ impl FromRequestParts<AppState> for CurrentSession {
                 // Set the session cookie
                 let mut cookie =
                     Cookie::new(SESSION_COOKIE_NAME, new_session.session_id.to_string());
+                // web-app[impl auth.session.cookie.httponly]
                 cookie.set_http_only(true);
+                // web-app[impl auth.session.cookie.secure]
                 cookie.set_secure(true);
+                // web-app[impl auth.session.cookie.samesite]
                 cookie.set_same_site(cja::server::cookies::SameSite::Lax);
                 cookie.set_max_age(time::Duration::seconds(SESSION_EXPIRATION_SECONDS));
                 cookie_jar.add(cookie);
@@ -149,6 +152,7 @@ impl FromRequestParts<AppState> for OptionalUser {
     }
 }
 
+// web-app[impl auth.protected.unauthorized]
 impl FromRequestParts<AppState> for CurrentUser {
     type Rejection = axum::response::Response;
 

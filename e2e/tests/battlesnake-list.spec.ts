@@ -4,6 +4,7 @@ test.describe('Battlesnake List', () => {
   test('displays empty state when user has no battlesnakes', async ({ authenticatedPage }) => {
     await authenticatedPage.goto('/battlesnakes');
 
+    // web-app[verify battlesnake.list.empty-state]
     await expect(authenticatedPage.getByRole('heading', { name: 'Your Battlesnakes' })).toBeVisible();
     await expect(authenticatedPage.getByText("You don't have any battlesnakes yet.")).toBeVisible();
   });
@@ -22,8 +23,10 @@ test.describe('Battlesnake List', () => {
     await expect(authenticatedPage).toHaveURL('/battlesnakes');
 
     // Battlesnake should appear in the table
+    // web-app[verify battlesnake.list.display-name]
     await expect(authenticatedPage.getByText(uniqueName)).toBeVisible();
     await expect(authenticatedPage.getByText('https://example.com/snake')).toBeVisible();
+    // web-app[verify battlesnake.visibility.public]
     await expect(authenticatedPage.getByText('Public')).toBeVisible();
   });
 
@@ -52,6 +55,7 @@ test.describe('Battlesnake List', () => {
     const privateRow = authenticatedPage.locator('tr', { hasText: privateName });
 
     // Check for badge elements specifically (they have the badge class)
+    // web-app[verify battlesnake.list.display-visibility]
     await expect(publicRow.locator('.badge', { hasText: 'Public' })).toBeVisible();
     await expect(privateRow.locator('.badge', { hasText: 'Private' })).toBeVisible();
   });
@@ -70,7 +74,9 @@ test.describe('Battlesnake List', () => {
     const snakeRow = authenticatedPage.locator('tr', { hasText: uniqueName });
 
     // Should have Edit and Delete buttons
+    // web-app[verify battlesnake.list.edit-button]
     await expect(snakeRow.getByRole('link', { name: 'Edit' })).toBeVisible();
+    // web-app[verify battlesnake.list.delete-button]
     await expect(snakeRow.getByRole('button', { name: 'Delete' })).toBeVisible();
   });
 
@@ -78,12 +84,14 @@ test.describe('Battlesnake List', () => {
     await authenticatedPage.goto('/battlesnakes');
 
     const addButton = authenticatedPage.getByRole('link', { name: 'Add New Battlesnake' });
+    // web-app[verify battlesnake.list.add-button]
     await expect(addButton).toBeVisible();
     await expect(addButton).toHaveAttribute('href', '/battlesnakes/new');
   });
 
   test('list page requires authentication', async ({ page }) => {
     const response = await page.goto('/battlesnakes');
+    // web-app[verify battlesnake.list.auth-required]
     expect(response?.status()).toBe(401);
   });
 });
