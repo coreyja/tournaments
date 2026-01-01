@@ -26,8 +26,8 @@ impl Job<AppState> for GameRunnerJob {
     const NAME: &'static str = "GameRunnerJob";
 
     async fn run(&self, app_state: AppState) -> cja::Result<()> {
-        // Run the game - this will update the status to running, execute the game, and update to finished
-        crate::models::game::run_game(&app_state.db, self.game_id).await?;
+        // Run the game using the new engine - this will update the status to running, execute the game, and update to finished
+        crate::engine::run_and_store_game(&app_state.db, self.game_id, None).await?;
         Ok(())
     }
 }

@@ -8,6 +8,7 @@ use state::AppState;
 use tracing::info;
 
 mod cron;
+mod engine;
 mod errors;
 mod flasher;
 mod github;
