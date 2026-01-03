@@ -30,7 +30,7 @@ SQLx uses offline query checking, which requires either a connection to the data
 1. **Update the Query Cache:**
 
    ```
-   DATABASE_URL="postgresql://localhost:5432/tournaments" cargo sqlx prepare --workspace
+   DATABASE_URL="postgresql://localhost:5432/arena" cargo sqlx prepare --workspace
    ```
 
    This will generate `.sqlx` files in the project root, which should be checked into version control.
@@ -38,7 +38,7 @@ SQLx uses offline query checking, which requires either a connection to the data
 2. **Set DATABASE_URL Environment Variable:**
    When running commands that use SQLx macros, ensure the DATABASE_URL is set:
    ```
-   export DATABASE_URL="postgresql://localhost:5432/tournaments"
+   export DATABASE_URL="postgresql://localhost:5432/arena"
    cargo build
    ```
 

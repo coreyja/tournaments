@@ -140,7 +140,7 @@ pub async fn github_auth_callback(
         ACCEPT,
         HeaderValue::from_static("application/vnd.github.v3+json"),
     );
-    headers.insert(USER_AGENT, HeaderValue::from_static("tournaments-app"));
+    headers.insert(USER_AGENT, HeaderValue::from_static("arena-app"));
 
     let github_user = client
         .get(format!("{}/user", oauth_config.api_url))

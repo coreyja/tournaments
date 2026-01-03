@@ -113,6 +113,53 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69f7f8c3906b62b754cd5326047894316021dcfe5a194c8ea52bdd94934a3457"
 
 [[package]]
+name = "arena"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "axum-macros",
+ "base64 0.21.7",
+ "base64ct",
+ "chrono",
+ "cja",
+ "color-eyre",
+ "futures",
+ "google-cloud-storage",
+ "include_dir",
+ "maud",
+ "mime_guess",
+ "num-bigint",
+ "opentelemetry 0.22.0",
+ "opentelemetry-otlp 0.15.0",
+ "opentelemetry_sdk 0.22.1",
+ "rand 0.8.5",
+ "reqwest 0.12.15",
+ "ring",
+ "sentry 0.32.3",
+ "sentry-tower 0.32.3",
+ "serde",
+ "serde_json",
+ "sha2",
+ "simple_asn1",
+ "sqlx",
+ "tempfile",
+ "thiserror 1.0.69",
+ "time",
+ "tokio",
+ "tower 0.4.13",
+ "tower-http 0.5.2",
+ "tracing",
+ "tracing-opentelemetry 0.23.0",
+ "tracing-subscriber",
+ "tracing-tree 0.3.1",
+ "urlencoding",
+ "uuid",
+ "vergen",
+ "zstd",
+]
+
+[[package]]
 name = "async-stream"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4422,53 +4469,6 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
-]
-
-[[package]]
-name = "tournaments"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "axum-macros",
- "base64 0.21.7",
- "base64ct",
- "chrono",
- "cja",
- "color-eyre",
- "futures",
- "google-cloud-storage",
- "include_dir",
- "maud",
- "mime_guess",
- "num-bigint",
- "opentelemetry 0.22.0",
- "opentelemetry-otlp 0.15.0",
- "opentelemetry_sdk 0.22.1",
- "rand 0.8.5",
- "reqwest 0.12.15",
- "ring",
- "sentry 0.32.3",
- "sentry-tower 0.32.3",
- "serde",
- "serde_json",
- "sha2",
- "simple_asn1",
- "sqlx",
- "tempfile",
- "thiserror 1.0.69",
- "time",
- "tokio",
- "tower 0.4.13",
- "tower-http 0.5.2",
- "tracing",
- "tracing-opentelemetry 0.23.0",
- "tracing-subscriber",
- "tracing-tree 0.3.1",
- "urlencoding",
- "uuid",
- "vergen",
- "zstd",
 ]
 
 [[package]]

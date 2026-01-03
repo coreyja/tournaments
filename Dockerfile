@@ -24,12 +24,12 @@ RUN mkdir -p server/src mock-github-oauth/src && \
     echo "" > mock-github-oauth/src/lib.rs
 
 # Build dependencies only (for caching)
-RUN cargo build --release --package tournaments
+RUN cargo build --release --package arena
 
 # Remove dummy files
 RUN rm -rf server/src
 
-# Copy actual source code (only tournaments, not mock-github-oauth)
+# Copy actual source code (only arena, not mock-github-oauth)
 COPY server/src ./server/src
 COPY server/static ./server/static
 COPY migrations ./migrations
@@ -42,7 +42,7 @@ ENV SQLX_OFFLINE=true
 RUN touch server/src/main.rs
 
 # Build the application
-RUN cargo build --release --package tournaments
+RUN cargo build --release --package arena
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -56,7 +56,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the binary from builder
-COPY --from=builder /app/target/release/tournaments /app/tournaments
+COPY --from=builder /app/target/release/arena /app/arena
 
 # Cloud Run uses PORT env var, default to 8080
 ENV PORT=8080
@@ -65,4 +65,4 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Run the application
-CMD ["/app/tournaments"]
+CMD ["/app/arena"]

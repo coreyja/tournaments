@@ -1,9 +1,9 @@
 [package]
-name = "tournaments"
+name = "arena"
 version = "0.1.0"
 edition = "2024"
 
-default-run = "tournaments"
+default-run = "arena"
 
 build = "build.rs"
 
