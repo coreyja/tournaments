@@ -7,7 +7,7 @@ use crate::github::auth::GitHubOAuthConfig;
 pub struct AppState {
     pub db: sqlx::Pool<sqlx::Postgres>,
     pub cookie_key: cja::server::cookies::CookieKey,
-    pub github_oauth_config: GitHubOAuthConfig,
+    pub github_oauth_config: Option<GitHubOAuthConfig>,
     /// Connection to the legacy Battlesnake Engine database (for game backup)
     pub engine_db: Option<sqlx::Pool<sqlx::Postgres>>,
     /// GCS bucket name for game backups
@@ -56,9 +56,17 @@ impl AppState {
 
         let cookie_key = cja::server::cookies::CookieKey::from_env_or_generate()?;
 
-        // Initialize GitHub OAuth config - now required
-        let github_oauth_config =
-            GitHubOAuthConfig::from_env().wrap_err("GitHub OAuth configuration is required")?;
+        // Initialize GitHub OAuth config (optional - auth disabled if not configured)
+        let github_oauth_config = match GitHubOAuthConfig::from_env() {
+            Ok(config) => {
+                tracing::info!("GitHub OAuth configured");
+                Some(config)
+            }
+            Err(e) => {
+                tracing::warn!("GitHub OAuth not configured, auth will be disabled: {}", e);
+                None
+            }
+        };
 
         // Optional: Engine database for game backup
         let engine_db = match std::env::var("ENGINE_DATABASE_URL") {

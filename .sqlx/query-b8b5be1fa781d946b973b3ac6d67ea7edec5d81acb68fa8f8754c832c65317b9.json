@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE sessions\n        SET \n            github_oauth_state = NULL\n        WHERE session_id = $1\n        RETURNING \n            session_id,\n            user_id,\n            github_oauth_state,\n            flash_message,\n            flash_type,\n            created_at,\n            updated_at,\n            expires_at\n        ",
+  "query": "\n        INSERT INTO sessions (github_oauth_state, flash_message, flash_type)\n        VALUES (NULL, NULL, NULL)\n        RETURNING\n            session_id,\n            user_id,\n            github_oauth_state,\n            flash_message,\n            flash_type,\n            created_at,\n            updated_at,\n            expires_at\n        ",
   "describe": {
     "columns": [
       {
@@ -45,9 +45,7 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -60,5 +58,5 @@
       false
     ]
   },
-  "hash": "d8e2d36b7648dd22db498fbfae6e0f97d1319b5efa40dd8ee4b5ec5ffb8a4b8b"
+  "hash": "b8b5be1fa781d946b973b3ac6d67ea7edec5d81acb68fa8f8754c832c65317b9"
 }
