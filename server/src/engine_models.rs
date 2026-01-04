@@ -14,15 +14,15 @@ pub struct EngineGame {
     pub id: String,
     #[serde(rename = "Status")]
     pub status: String,
-    #[serde(rename = "Width")]
+    #[serde(rename = "Width", default)]
     pub width: i32,
-    #[serde(rename = "Height")]
+    #[serde(rename = "Height", default)]
     pub height: i32,
     #[serde(rename = "Ruleset", default)]
     pub ruleset: HashMap<String, String>,
-    #[serde(rename = "SnakeTimeout")]
+    #[serde(rename = "SnakeTimeout", default)]
     pub snake_timeout: i32,
-    #[serde(rename = "MaxTurns")]
+    #[serde(rename = "MaxTurns", default)]
     pub max_turns: i32,
     #[serde(rename = "FoodSpawns", default)]
     pub food_spawns: Vec<PointOnTurn>,
@@ -37,7 +37,7 @@ pub struct EngineGame {
     #[serde(rename = "Map")]
     pub map: Option<String>,
     /// Unix timestamp in microseconds
-    #[serde(rename = "Created")]
+    #[serde(rename = "Created", default)]
     pub created: i64,
 }
 
@@ -63,7 +63,7 @@ impl EngineGame {
 /// A single frame/turn of a game from the Engine's `game_frames` table `value` column.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct EngineGameFrame {
-    #[serde(rename = "Turn")]
+    #[serde(rename = "Turn", default)]
     pub turn: i32,
     #[serde(rename = "Snakes", default)]
     pub snakes: Vec<EngineSnake>,
@@ -88,7 +88,7 @@ pub struct EngineSnake {
     pub url: Option<String>,
     #[serde(rename = "Body", default)]
     pub body: Vec<Point>,
-    #[serde(rename = "Health")]
+    #[serde(rename = "Health", default)]
     pub health: i32,
     #[serde(rename = "Death")]
     pub death: Option<Death>,
@@ -125,9 +125,9 @@ pub struct EngineSnake {
 /// Death information for a snake.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Death {
-    #[serde(rename = "Cause")]
+    #[serde(rename = "Cause", default)]
     pub cause: String,
-    #[serde(rename = "Turn")]
+    #[serde(rename = "Turn", default)]
     pub turn: i32,
     #[serde(rename = "EliminatedBy")]
     pub eliminated_by: Option<String>,
@@ -136,31 +136,31 @@ pub struct Death {
 /// A point on the board.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Point {
-    #[serde(rename = "X")]
+    #[serde(rename = "X", default)]
     pub x: i32,
-    #[serde(rename = "Y")]
+    #[serde(rename = "Y", default)]
     pub y: i32,
 }
 
 /// A point with an associated turn number.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PointOnTurn {
-    #[serde(rename = "X")]
+    #[serde(rename = "X", default)]
     pub x: i32,
-    #[serde(rename = "Y")]
+    #[serde(rename = "Y", default)]
     pub y: i32,
-    #[serde(rename = "Turn")]
+    #[serde(rename = "Turn", default)]
     pub turn: i32,
 }
 
 /// State associated with a point on the board.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PointState {
-    #[serde(rename = "X")]
+    #[serde(rename = "X", default)]
     pub x: i32,
-    #[serde(rename = "Y")]
+    #[serde(rename = "Y", default)]
     pub y: i32,
-    #[serde(rename = "Value")]
+    #[serde(rename = "Value", default)]
     pub value: i32,
 }
 
