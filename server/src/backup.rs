@@ -11,14 +11,17 @@ use google_cloud_storage::{
 use sqlx::{FromRow, PgPool};
 
 use crate::engine_models::{EngineGame, EngineGameFrame, GameExport};
+use crate::jobs::BackupSingleGameJob;
 use crate::state::AppState;
+use cja::jobs::Job;
 
 /// Row from Engine's games table
 #[derive(FromRow)]
 struct EngineGameRow {
     id: String,
     value: serde_json::Value,
-    created: chrono::DateTime<Utc>,
+    /// Engine DB uses TIMESTAMP (no timezone), not TIMESTAMPTZ
+    created: chrono::NaiveDateTime,
 }
 
 /// Fetch completed games from the Engine database within the given time window.
@@ -26,10 +29,12 @@ async fn fetch_completed_games(
     engine_db: &PgPool,
     hours_ago: i64,
 ) -> cja::Result<Vec<EngineGameRow>> {
-    let since = Utc::now() - Duration::hours(hours_ago);
+    // Engine DB uses TIMESTAMP (no timezone), so use NaiveDateTime
+    let since = (Utc::now() - Duration::hours(hours_ago)).naive_utc();
 
     // Note: We use query_as (not the macro) because this is a different database
     // with a different schema that sqlx doesn't know about at compile time.
+    // Limit to 5000 as a safety valve - if we hit this, we'll catch the rest next run.
     let rows: Vec<EngineGameRow> = sqlx::query_as(
         r#"
         SELECT id, value, created
@@ -37,6 +42,7 @@ async fn fetch_completed_games(
         WHERE value->>'Status' IN ('complete', 'error')
           AND created >= $1
         ORDER BY created ASC
+        LIMIT 5000
         "#,
     )
     .bind(since)
@@ -45,6 +51,23 @@ async fn fetch_completed_games(
     .wrap_err("Failed to fetch completed games from Engine")?;
 
     Ok(rows)
+}
+
+/// Fetch a single game from the Engine database by ID.
+async fn fetch_game_by_id(engine_db: &PgPool, game_id: &str) -> cja::Result<Option<EngineGameRow>> {
+    let row: Option<EngineGameRow> = sqlx::query_as(
+        r#"
+        SELECT id, value, created
+        FROM games
+        WHERE id = $1
+        "#,
+    )
+    .bind(game_id)
+    .fetch_optional(engine_db)
+    .await
+    .wrap_err("Failed to fetch game from Engine")?;
+
+    Ok(row)
 }
 
 /// Fetch all frames for a game from the Engine database.
@@ -196,48 +219,37 @@ impl From<color_eyre::Report> for BackupError {
     }
 }
 
-/// Run the game backup process.
+/// Hours to look back for games to backup.
+const BACKUP_WINDOW_HOURS: i64 = 4;
+
+/// Run the game backup discovery process.
 ///
-/// Fetches completed games from the Engine database, exports them to GCS,
-/// and records the archival in the local database.
-pub async fn run_backup(app_state: &AppState) -> Result<(), BackupError> {
-    run_backup_inner(app_state).await.map_err(Into::into)
+/// Finds completed games from the Engine database and enqueues individual
+/// backup jobs for each game that hasn't been archived yet.
+pub async fn run_backup_discovery(app_state: &AppState) -> Result<(), BackupError> {
+    run_backup_discovery_inner(app_state).await.map_err(Into::into)
 }
 
-async fn run_backup_inner(app_state: &AppState) -> cja::Result<()> {
+async fn run_backup_discovery_inner(app_state: &AppState) -> cja::Result<()> {
+    tracing::info!(window_hours = BACKUP_WINDOW_HOURS, "Starting backup discovery");
+
     let engine_db = match &app_state.engine_db {
         Some(db) => db,
         None => {
-            tracing::warn!("Engine database not configured, skipping backup");
+            tracing::warn!("Engine database not configured, skipping backup discovery");
             return Ok(());
         }
     };
 
-    let bucket = match &app_state.gcs_bucket {
-        Some(b) => b.clone(),
-        None => {
-            tracing::warn!("GCS bucket not configured, skipping backup");
-            return Ok(());
-        }
-    };
-
-    // Initialize GCS client (uses Workload Identity in Cloud Run, ADC locally)
-    let config = ClientConfig::default()
-        .with_auth()
-        .await
-        .wrap_err("Failed to configure GCS client")?;
-    let gcs_client = GcsClient::new(config);
-
-    // Fetch games from the last 36 hours
-    let games = fetch_completed_games(engine_db, 36).await?;
+    // Fetch games from the lookback window
+    let games = fetch_completed_games(engine_db, BACKUP_WINDOW_HOURS).await?;
     tracing::info!(
         count = games.len(),
-        "Found completed games to potentially archive"
+        "Found completed games to check for archival"
     );
 
-    let mut archived_count = 0;
+    let mut enqueued_count = 0;
     let mut skipped_count = 0;
-    let mut error_count = 0;
 
     for game_row in games {
         // Check if already archived
@@ -246,62 +258,88 @@ async fn run_backup_inner(app_state: &AppState) -> cja::Result<()> {
             continue;
         }
 
-        // Parse the game data
-        let game: EngineGame = match serde_json::from_value(game_row.value) {
-            Ok(g) => g,
-            Err(e) => {
-                tracing::error!(game_id = %game_row.id, error = %e, "Failed to parse game data");
-                error_count += 1;
-                continue;
-            }
-        };
-
-        // Fetch frames
-        let frames = match fetch_game_frames(engine_db, &game.id).await {
-            Ok(f) => f,
-            Err(e) => {
-                tracing::error!(game_id = %game.id, error = %e, "Failed to fetch game frames");
-                error_count += 1;
-                continue;
-            }
-        };
-
-        // Build export
-        let export = GameExport {
-            game: game.clone(),
-            frames,
-            exported_at: Utc::now(),
-        };
-
-        // Generate path and upload
-        let path = gcs_path(&game);
-        if let Err(e) = compress_and_upload_to_gcs(&gcs_client, &bucket, &path, &export).await {
-            tracing::error!(game_id = %game.id, path = %path, error = %e, "Failed to upload game");
-            error_count += 1;
-            continue;
+        // Enqueue a job to backup this game
+        BackupSingleGameJob {
+            engine_game_id: game_row.id.clone(),
         }
+        .enqueue(app_state.clone(), format!("backup game {}", game_row.id))
+        .await
+        .wrap_err_with(|| format!("Failed to enqueue backup job for game {}", game_row.id))?;
 
-        // Record in local database
-        if let Err(e) = upsert_game_record(&app_state.db, &game, &path).await {
-            tracing::error!(game_id = %game.id, error = %e, "Failed to record archived game");
-            error_count += 1;
-            continue;
-        }
-
-        tracing::info!(game_id = %game.id, path = %path, "Archived game");
-        archived_count += 1;
+        enqueued_count += 1;
     }
 
     tracing::info!(
-        archived = archived_count,
+        enqueued = enqueued_count,
         skipped = skipped_count,
-        errors = error_count,
-        "Backup complete"
+        "Backup discovery complete"
     );
 
-    if error_count > 0 {
-        return Err(eyre!("{} games failed to archive", error_count));
+    Ok(())
+}
+
+/// Backup a single game from the Engine database to GCS.
+///
+/// Called by BackupSingleGameJob. Fetches the game and frames from Engine,
+/// compresses and uploads to GCS, and records the archival in the local database.
+pub async fn backup_single_game(app_state: &AppState, engine_game_id: &str) -> Result<(), BackupError> {
+    backup_single_game_inner(app_state, engine_game_id).await.map_err(Into::into)
+}
+
+async fn backup_single_game_inner(app_state: &AppState, engine_game_id: &str) -> cja::Result<()> {
+    // Check if already archived (idempotency)
+    if is_already_archived(&app_state.db, engine_game_id).await? {
+        tracing::debug!(game_id = %engine_game_id, "Game already archived, skipping");
+        return Ok(());
     }
 
+    let engine_db = match &app_state.engine_db {
+        Some(db) => db,
+        None => {
+            return Err(eyre!("Engine database not configured"));
+        }
+    };
+
+    let bucket = match &app_state.gcs_bucket {
+        Some(b) => b.clone(),
+        None => {
+            return Err(eyre!("GCS bucket not configured"));
+        }
+    };
+
+    // Fetch the game from Engine
+    let game_row = fetch_game_by_id(engine_db, engine_game_id)
+        .await?
+        .ok_or_else(|| eyre!("Game {} not found in Engine database", engine_game_id))?;
+
+    // Parse the game data
+    let game: EngineGame = serde_json::from_value(game_row.value)
+        .wrap_err_with(|| format!("Failed to parse game data for {}", engine_game_id))?;
+
+    // Fetch frames
+    let frames = fetch_game_frames(engine_db, &game.id).await?;
+
+    // Build export
+    let export = GameExport {
+        game: game.clone(),
+        frames,
+        exported_at: Utc::now(),
+    };
+
+    // Initialize GCS client
+    let config = ClientConfig::default()
+        .with_auth()
+        .await
+        .wrap_err("Failed to configure GCS client")?;
+    let gcs_client = GcsClient::new(config);
+
+    // Generate path and upload
+    let path = gcs_path(&game);
+    compress_and_upload_to_gcs(&gcs_client, &bucket, &path, &export).await?;
+
+    // Record in local database
+    upsert_game_record(&app_state.db, &game, &path).await?;
+
+    tracing::info!(game_id = %game.id, path = %path, "Archived game");
     Ok(())
 }
