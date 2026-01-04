@@ -6,7 +6,7 @@ test.describe('Smoke Tests', () => {
 
     // Verify the page loads with expected content
     await expect(page.getByRole('heading', { name: 'Hello, world!' })).toBeVisible();
-    await expect(page.getByText('Welcome to the Tournaments application!')).toBeVisible();
+    await expect(page.getByText('Welcome to the Arena application!')).toBeVisible();
   });
 
   // web-app[verify homepage.unauth.message]

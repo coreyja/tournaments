@@ -1,4 +1,4 @@
-# Tournaments
+# Arena
 
 A tournament management application with GitHub OAuth authentication.
 
@@ -14,7 +14,7 @@ A tournament management application with GitHub OAuth authentication.
 Create a `.envrc` file in the root directory with the following environment variables:
 
 ```
-export DATABASE_URL="postgresql://localhost:5432/tournaments"
+export DATABASE_URL="postgresql://localhost:5432/arena"
 export GITHUB_CLIENT_ID="your_github_client_id"
 export GITHUB_CLIENT_SECRET="your_github_client_secret"
 export GITHUB_REDIRECT_URI="http://localhost:3000/auth/github/callback"
@@ -29,7 +29,7 @@ If you want to create a GitHub App instead of an OAuth App:
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
 2. Click on "New GitHub App"
 3. Fill in the required fields:
-   - **GitHub App name**: Tournaments (or any name you prefer)
+   - **GitHub App name**: Arena (or any name you prefer)
    - **Homepage URL**: http://localhost:3000
    - **Callback URL**: http://localhost:3000/auth/github/callback
    - **Setup URL**: (Optional) Leave blank
@@ -82,9 +82,9 @@ The application will be available at http://localhost:3000
 - Revert latest migration: `cargo sqlx mig revert`
 - Create new migration: `cargo sqlx migrate add --source migrations <migration_name>`
 - Recreate DB from scratch: `cargo sqlx db drop -y && cargo sqlx db create && cargo sqlx migrate run`
-- Update query cache: `DATABASE_URL="postgresql://localhost:5432/tournaments" cargo sqlx prepare --workspace`
+- Update query cache: `DATABASE_URL="postgresql://localhost:5432/arena" cargo sqlx prepare --workspace`
 
-Note: Always ensure the DATABASE_URL environment variable is set when working with SQLx commands, especially for migration reversion: `DATABASE_URL="postgresql://localhost:5432/tournaments" cargo sqlx mig revert`
+Note: Always ensure the DATABASE_URL environment variable is set when working with SQLx commands, especially for migration reversion: `DATABASE_URL="postgresql://localhost:5432/arena" cargo sqlx mig revert`
 
 ### E2E Testing
 
@@ -100,11 +100,11 @@ npx playwright install chromium
 
 #### Test Database
 
-E2E tests use a separate database (`tournaments_test`). Create it before running tests:
+E2E tests use a separate database (`arena_test`). Create it before running tests:
 
 ```bash
-DATABASE_URL="postgresql://localhost:5432/tournaments_test" cargo sqlx db create
-DATABASE_URL="postgresql://localhost:5432/tournaments_test" cargo sqlx migrate run
+DATABASE_URL="postgresql://localhost:5432/arena_test" cargo sqlx db create
+DATABASE_URL="postgresql://localhost:5432/arena_test" cargo sqlx migrate run
 ```
 
 #### Running Tests

@@ -40,7 +40,7 @@ fn main() -> color_eyre::Result<()> {
 
 async fn run_application() -> cja::Result<()> {
     // Initialize tracing (returns Eyes shutdown handle if configured)
-    let eyes_shutdown_handle = setup_tracing("tournaments")?;
+    let eyes_shutdown_handle = setup_tracing("arent")?;
 
     let app_state = AppState::from_env().await?;
 

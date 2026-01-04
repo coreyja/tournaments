@@ -29,6 +29,14 @@ pub async fn github_auth(
     current_session: CurrentSession,
 ) -> ServerResult<Redirect, StatusCode> {
     // web-app[impl auth.oauth.state.generation]
+    // Check if OAuth is configured
+    let oauth_config = state.github_oauth_config.as_ref().ok_or_else(|| {
+        ServerError(
+            eyre!("GitHub OAuth is not configured"),
+            StatusCode::SERVICE_UNAVAILABLE,
+        )
+    })?;
+
     // Generate a random state for CSRF protection
     let oauth_state = format!("{}", uuid::Uuid::new_v4());
 
@@ -46,9 +54,9 @@ pub async fn github_auth(
     let auth_url = format!(
         // web-app[impl auth.oauth.scope]
         "{}?client_id={}&redirect_uri={}&state={}&scope={}",
-        state.github_oauth_config.oauth_url,
-        state.github_oauth_config.client_id,
-        urlencoding::encode(&state.github_oauth_config.redirect_uri),
+        oauth_config.oauth_url,
+        oauth_config.client_id,
+        urlencoding::encode(&oauth_config.redirect_uri),
         oauth_state,
         "user:email" // auth.oauth.scope: requesting user:email scope
     );
@@ -65,6 +73,14 @@ pub async fn github_auth_callback(
     flasher: Flasher,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
     // web-app[impl auth.oauth.state.validation]
+    // Check if OAuth is configured
+    let oauth_config = state.github_oauth_config.as_ref().ok_or_else(|| {
+        ServerError(
+            eyre!("GitHub OAuth is not configured"),
+            StatusCode::SERVICE_UNAVAILABLE,
+        )
+    })?;
+
     // Verify the state parameter to prevent CSRF attacks
     let session_oauth_state = current_session.session.github_oauth_state;
 
@@ -97,12 +113,12 @@ pub async fn github_auth_callback(
     // Exchange code for access token
     let client = reqwest::Client::new();
     let token_response = client
-        .post(&state.github_oauth_config.token_url)
+        .post(&oauth_config.token_url)
         .json(&serde_json::json!({
-            "client_id": state.github_oauth_config.client_id,
-            "client_secret": state.github_oauth_config.client_secret,
+            "client_id": oauth_config.client_id,
+            "client_secret": oauth_config.client_secret,
             "code": params.code,
-            "redirect_uri": state.github_oauth_config.redirect_uri,
+            "redirect_uri": oauth_config.redirect_uri,
         }))
         .header(ACCEPT, "application/json")
         .send()
@@ -124,10 +140,10 @@ pub async fn github_auth_callback(
         ACCEPT,
         HeaderValue::from_static("application/vnd.github.v3+json"),
     );
-    headers.insert(USER_AGENT, HeaderValue::from_static("tournaments-app"));
+    headers.insert(USER_AGENT, HeaderValue::from_static("arena-app"));
 
     let github_user = client
-        .get(format!("{}/user", state.github_oauth_config.api_url))
+        .get(format!("{}/user", oauth_config.api_url))
         .headers(headers.clone())
         .send()
         .await

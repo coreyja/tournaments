@@ -114,7 +114,7 @@ async fn root_page(
                 }
                 div class="content" style="margin-top: 20px;" {
                     h1 { "Hello, world!" }
-                    p { "Welcome to the Tournaments application!" }
+                    p { "Welcome to the Arena application!" }
                 }
             }
         }),
@@ -165,8 +165,8 @@ async fn profile_page(
                     div class="profile-actions" style="margin-top: 20px;" {
                         // web-app[impl profile.battlesnakes.summary]
                         h3 { "Your Battlesnakes" }
-                        p { "Manage your Battlesnake collection for tournaments." }
                         // web-app[impl profile.nav.battlesnakes]
+                        p { "Manage your Battlesnake collection." }
                         a href="/battlesnakes" class="btn btn-primary" { "Manage Battlesnakes" }
 
                         h3 class="mt-4" { "Games" }

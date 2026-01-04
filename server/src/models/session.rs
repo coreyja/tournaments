@@ -20,8 +20,7 @@ pub struct Session {
 
 // web-app[impl auth.session.cookie.name]
 // Constant for session cookie name
-pub const SESSION_COOKIE_NAME: &str = "tournaments_session_id";
-// web-app[impl auth.session.expiration]
+pub const SESSION_COOKIE_NAME: &str = "arena_session_id";
 // Default session expiration in seconds (30 days)
 pub const SESSION_EXPIRATION_SECONDS: i64 = 60 * 60 * 24 * 30;
 
@@ -56,7 +55,7 @@ pub async fn create_session(pool: &PgPool) -> cja::Result<Session> {
         r#"
         INSERT INTO sessions (github_oauth_state, flash_message, flash_type)
         VALUES (NULL, NULL, NULL)
-        RETURNING 
+        RETURNING
             session_id,
             user_id,
             github_oauth_state,
@@ -93,7 +92,7 @@ pub async fn get_active_session_by_id(
             updated_at,
             expires_at
         FROM sessions
-        WHERE 
+        WHERE
             session_id = $1
             AND expires_at > NOW()
         "#,
@@ -117,11 +116,11 @@ pub async fn set_flash_message(
         Session,
         r#"
         UPDATE sessions
-        SET 
+        SET
             flash_message = $2,
             flash_type = $3
         WHERE session_id = $1
-        RETURNING 
+        RETURNING
             session_id,
             user_id,
             github_oauth_state,
@@ -148,11 +147,11 @@ pub async fn clear_flash_message(pool: &PgPool, session_id: Uuid) -> cja::Result
         Session,
         r#"
         UPDATE sessions
-        SET 
+        SET
             flash_message = NULL,
             flash_type = NULL
         WHERE session_id = $1
-        RETURNING 
+        RETURNING
             session_id,
             user_id,
             github_oauth_state,
@@ -197,7 +196,7 @@ pub async fn get_session_with_user(
             u.updated_at as "user_updated_at?"
         FROM sessions s
         LEFT JOIN users u ON s.user_id = u.user_id
-        WHERE 
+        WHERE
             s.session_id = $1
             AND s.expires_at > NOW()
         "#,
@@ -265,10 +264,10 @@ pub async fn set_github_oauth_state(
         Session,
         r#"
         UPDATE sessions
-        SET 
+        SET
             github_oauth_state = $2
         WHERE session_id = $1
-        RETURNING 
+        RETURNING
             session_id,
             user_id,
             github_oauth_state,
@@ -294,10 +293,10 @@ pub async fn clear_github_oauth_state(pool: &PgPool, session_id: Uuid) -> cja::R
         Session,
         r#"
         UPDATE sessions
-        SET 
+        SET
             github_oauth_state = NULL
         WHERE session_id = $1
-        RETURNING 
+        RETURNING
             session_id,
             user_id,
             github_oauth_state,
@@ -326,12 +325,12 @@ pub async fn associate_user_with_session(
         Session,
         r#"
         UPDATE sessions
-        SET 
+        SET
             user_id = $2,
             github_oauth_state = NULL,
             expires_at = NOW() + INTERVAL '30 days'
         WHERE session_id = $1
-        RETURNING 
+        RETURNING
             session_id,
             user_id,
             github_oauth_state,
@@ -360,12 +359,12 @@ pub async fn disassociate_user_from_session(
         Session,
         r#"
         UPDATE sessions
-        SET 
+        SET
             user_id = NULL,
             github_oauth_state = NULL,
             expires_at = NOW() + INTERVAL '1 hour'
         WHERE session_id = $1
-        RETURNING 
+        RETURNING
             session_id,
             user_id,
             github_oauth_state,
@@ -390,10 +389,10 @@ pub async fn refresh_session(pool: &PgPool, session_id: Uuid) -> cja::Result<Ses
         Session,
         r#"
         UPDATE sessions
-        SET 
+        SET
             expires_at = GREATEST(expires_at, NOW() + INTERVAL '30 days')
         WHERE session_id = $1
-        RETURNING 
+        RETURNING
             session_id,
             user_id,
             github_oauth_state,
