@@ -39,8 +39,8 @@ fn main() -> color_eyre::Result<()> {
 }
 
 async fn run_application() -> cja::Result<()> {
-    // Initialize tracing
-    setup_tracing("tournaments")?;
+    // Initialize tracing (returns Eyes shutdown handle if configured)
+    let eyes_shutdown_handle = setup_tracing("tournaments")?;
 
     let app_state = AppState::from_env().await?;
 
@@ -50,6 +50,14 @@ async fn run_application() -> cja::Result<()> {
 
     // Wait for all tasks to complete
     futures::future::try_join_all(futures).await?;
+
+    // Graceful shutdown of Eyes tracing if configured
+    if let Some(handle) = eyes_shutdown_handle {
+        info!("Shutting down Eyes tracing...");
+        if let Err(e) = handle.shutdown().await {
+            tracing::warn!("Error shutting down Eyes: {e}");
+        }
+    }
 
     Ok(())
 }
