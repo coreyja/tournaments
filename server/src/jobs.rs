@@ -54,6 +54,10 @@ impl Job<AppState> for GameBackupJob {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BackupSingleGameJob {
     pub engine_game_id: String,
+    /// Optional batch ID for historical backfill tracking.
+    /// When set, completing this job will increment the batch's completed count.
+    #[serde(default)]
+    pub batch_id: Option<i32>,
 }
 
 #[async_trait::async_trait]
@@ -61,11 +65,37 @@ impl Job<AppState> for BackupSingleGameJob {
     const NAME: &'static str = "BackupSingleGameJob";
 
     async fn run(&self, app_state: AppState) -> cja::Result<()> {
-        crate::backup::backup_single_game(&app_state, &self.engine_game_id)
+        crate::backup::backup_single_game(&app_state, &self.engine_game_id, self.batch_id)
             .await
             .map_err(|e| color_eyre::eyre::eyre!("{}", e))?;
         Ok(())
     }
 }
 
-cja::impl_job_registry!(AppState, NoopJob, GameRunnerJob, GameBackupJob, BackupSingleGameJob);
+/// Job to discover historical games and enqueue backup jobs in batches.
+/// Uses fork-join pattern: enqueues a batch, waits for completion, then enqueues next batch.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct HistoricalBackupDiscoveryJob {
+    /// Cursor: only process games created after this timestamp
+    pub after_created: Option<chrono::NaiveDateTime>,
+    /// Cursor: for tie-breaking when created timestamps match
+    pub after_id: Option<String>,
+}
+
+#[async_trait::async_trait]
+impl Job<AppState> for HistoricalBackupDiscoveryJob {
+    const NAME: &'static str = "HistoricalBackupDiscoveryJob";
+
+    async fn run(&self, app_state: AppState) -> cja::Result<()> {
+        crate::backup::run_historical_backup_discovery(
+            &app_state,
+            self.after_created,
+            self.after_id.as_deref(),
+        )
+        .await
+        .map_err(|e| color_eyre::eyre::eyre!("{}", e))?;
+        Ok(())
+    }
+}
+
+cja::impl_job_registry!(AppState, NoopJob, GameRunnerJob, GameBackupJob, BackupSingleGameJob, HistoricalBackupDiscoveryJob);
