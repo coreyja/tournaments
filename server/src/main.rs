@@ -7,7 +7,9 @@ use cja::{
 use state::AppState;
 use tracing::info;
 
+mod backup;
 mod cron;
+mod engine_models;
 mod errors;
 mod flasher;
 mod github;
