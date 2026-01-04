@@ -73,6 +73,9 @@ pub fn routes(app_state: AppState) -> axum::Router {
         .with_state(app_state)
 }
 
+// web-app[impl homepage.route]
+// web-app[verify homepage.route]
+// web-app[impl homepage.public]
 async fn root_page(
     _: State<AppState>,
     auth::OptionalUser(user): auth::OptionalUser,
@@ -84,20 +87,28 @@ async fn root_page(
             div {
                 @if let Some(user) = user {
                     div class="user-info" {
+                        // web-app[impl homepage.auth.avatar]
                         img src=(user.github_avatar_url.unwrap_or_default()) alt="Avatar" style="width: 50px; height: 50px; border-radius: 50%;" {}
+                        // web-app[impl homepage.auth.welcome]
                         p { "Welcome, " (user.github_login) "!" }
                         @if let Some(name) = user.github_name {
                             p { "Name: " (name) }
                         }
                         div class="user-actions" style="margin-top: 10px;" {
+                            // web-app[impl homepage.auth.profile-link]
                             a href="/me" class="btn btn-primary" { "Profile" }
+                            // web-app[impl homepage.auth.battlesnakes-link]
                             a href="/battlesnakes" class="btn btn-primary" { "Battlesnakes" }
+                            // web-app[impl homepage.auth.logout-link]
+                            // web-app[impl homepage.auth.no-login-link]
                             a href="/auth/logout" class="btn btn-secondary" { "Logout" }
                         }
                     }
                 } @else {
                     div class="login" {
+                        // web-app[impl homepage.unauth.message]
                         p { "You are not logged in." }
+                        // web-app[impl homepage.unauth.login-link]
                         a href="/auth/github" { "Login with GitHub" }
                     }
                 }
@@ -110,6 +121,10 @@ async fn root_page(
     ))
 }
 
+// web-app[impl profile.route]
+// web-app[verify profile.route]
+// web-app[impl profile.auth-required]
+// web-app[impl profile.title]
 /// Profile page that requires authentication
 async fn profile_page(
     auth::CurrentUser(user): auth::CurrentUser,
@@ -123,13 +138,17 @@ async fn profile_page(
 
                 div class="profile-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 20px 0; max-width: 600px;" {
                     div class="profile-header" style="display: flex; align-items: center; margin-bottom: 20px;" {
+                        // web-app[impl profile.display.avatar]
                         img src=(user.github_avatar_url.unwrap_or_default()) alt="Avatar" style="width: 100px; height: 100px; border-radius: 50%; margin-right: 20px;" {}
 
                         div {
+                            // web-app[impl profile.display.login]
                             h2 style="margin: 0 0 10px 0;" { (user.github_login) }
+                            // web-app[impl profile.display.name]
                             @if let Some(name) = user.github_name.as_ref() {
                                 p style="margin: 0; color: #666;" { (name) }
                             }
+                            // web-app[impl profile.display.email]
                             @if let Some(email) = user.github_email.as_ref() {
                                 p style="margin: 0; color: #666;" { (email) }
                             }
@@ -144,20 +163,25 @@ async fn profile_page(
                     }
 
                     div class="profile-actions" style="margin-top: 20px;" {
+                        // web-app[impl profile.battlesnakes.summary]
                         h3 { "Your Battlesnakes" }
                         p { "Manage your Battlesnake collection for tournaments." }
+                        // web-app[impl profile.nav.battlesnakes]
                         a href="/battlesnakes" class="btn btn-primary" { "Manage Battlesnakes" }
 
                         h3 class="mt-4" { "Games" }
                         p { "Create and view games with your Battlesnakes." }
                         div {
+                            // web-app[impl profile.nav.create-game]
                             a href="/games/new" class="btn btn-primary" { "Create New Game" }
+                            // web-app[impl profile.nav.view-games]
                             a href="/games" class="btn btn-secondary ms-2" { "View All Games" }
                         }
                     }
                 }
 
                 div class="nav" style="margin-top: 20px;" {
+                    // web-app[impl profile.nav.home]
                     a href="/" { "Back to Home" }
                     span { " | " }
                     a href="/auth/logout" { "Logout" }

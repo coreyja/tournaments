@@ -18,8 +18,10 @@ pub struct Session {
     pub expires_at: chrono::DateTime<chrono::Utc>,
 }
 
+// web-app[impl auth.session.cookie.name]
 // Constant for session cookie name
 pub const SESSION_COOKIE_NAME: &str = "tournaments_session_id";
+// web-app[impl auth.session.expiration]
 // Default session expiration in seconds (30 days)
 pub const SESSION_EXPIRATION_SECONDS: i64 = 60 * 60 * 24 * 30;
 
@@ -44,6 +46,7 @@ impl Session {
     }
 }
 
+// web-app[impl auth.session.creation]
 /// Create a new session
 ///
 /// Creates a new anonymous session with no user attached.

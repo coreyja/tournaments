@@ -126,3 +126,50 @@ npm run test:ui
 ```
 
 Note: Tests automatically start the server using `cargo run` with the test database. The first run may take longer due to compilation.
+
+### Spec-to-Code Tracing with Tracey
+
+This project uses [Tracey](https://github.com/bearcove/tracey) for spec-to-code tracing, linking technical specifications to both implementations and tests.
+
+#### Specifications
+
+Specifications are written in Markdown and located in `specs/web_app/`:
+
+- `auth.md` - Authentication (GitHub OAuth, sessions, logout)
+- `battlesnakes.md` - Battlesnake CRUD operations and validation
+- `games.md` - Game creation, listing, and viewing
+- `profiles.md` - User profiles and homepage
+
+Each spec uses the `r[rule.id]` syntax to define requirements, for example:
+```markdown
+r[auth.oauth.initiation]
+The system provides a `/auth/github` route that initiates the OAuth flow.
+```
+
+#### Markers
+
+- **Implementation markers** (`[impl rule.id]`) are placed in Rust source code doc comments
+- **Verification markers** (`[verify rule.id]`) are placed in E2E test comments
+
+#### Running Tracey Locally
+
+Install Tracey:
+```bash
+cargo install tracey
+```
+
+Run the report:
+```bash
+tracey --config .config/tracey/config.kdl
+```
+
+If Tracey is not installed, the CI workflow will still pass (with a warning) and report generation will be skipped.
+
+#### CI Integration
+
+Tracey runs automatically in CI on every push and pull request. The workflow:
+1. Installs Tracey if not cached
+2. Generates a coverage report
+3. Uploads the report as an artifact
+
+Note: The Tracey job is configured to not fail the build, it only generates reports.

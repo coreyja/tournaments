@@ -22,3 +22,6 @@ jobs:
 
   e2e:
     uses: ./.github/workflows/e2e.yml
+
+  tracey:
+    uses: ./.github/workflows/tracey.yml

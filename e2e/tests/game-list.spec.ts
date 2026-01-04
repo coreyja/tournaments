@@ -8,6 +8,7 @@ test.describe('Game List', () => {
     // Either shows empty state or games table - both are valid
     const hasGames = await authenticatedPage.locator('table').isVisible();
     if (!hasGames) {
+      // web-app[verify game.list.empty-state]
       await expect(authenticatedPage.getByText('No games have been created yet.')).toBeVisible();
     }
   });
@@ -19,6 +20,7 @@ test.describe('Game List', () => {
     await authenticatedPage.getByRole('link', { name: 'Create New Game' }).click();
 
     // Should redirect to a game flow page
+    // web-app[verify game.list.create-link]
     await expect(authenticatedPage).toHaveURL(/\/games\/flow\//);
   });
 
@@ -57,10 +59,13 @@ test.describe('Game List', () => {
 
     // Should see a game in the table (board size shows as just "19x19")
     // Use .first() since there may be multiple games from parallel tests
+    // web-app[verify game.list.display-board-size]
     await expect(authenticatedPage.getByRole('cell', { name: '19x19' }).first()).toBeVisible();
+    // web-app[verify game.list.display-game-type]
     await expect(authenticatedPage.getByRole('cell', { name: 'Royale' }).first()).toBeVisible();
 
     // Should have a View button
+    // web-app[verify game.list.view-link]
     await expect(authenticatedPage.getByRole('link', { name: 'View' }).first()).toBeVisible();
   });
 
@@ -112,9 +117,11 @@ test.describe('Game List', () => {
     await expect(authenticatedPage.getByRole('heading', { name: 'Game Results' })).toBeVisible();
 
     // Should show the snake name in the table
+    // web-app[verify game.view.results-name]
     await expect(authenticatedPage.getByText(snakeName)).toBeVisible();
 
     // Should show placement badge (1st place for single snake)
+    // web-app[verify game.view.results-placement]
     await expect(authenticatedPage.getByText('1st Place')).toBeVisible();
   });
 
@@ -142,6 +149,7 @@ test.describe('Game List', () => {
 
   test('game list requires authentication', async ({ page }) => {
     const response = await page.goto('/games');
+    // web-app[verify game.list.auth-required]
     expect(response?.status()).toBe(401);
   });
 });

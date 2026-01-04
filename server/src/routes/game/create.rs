@@ -22,6 +22,7 @@ use crate::{
     state::AppState,
 };
 
+// web-app[verify game.create.route]
 // Initial game creation page - redirect to a new flow
 #[debug_handler]
 pub async fn new_game(
@@ -203,6 +204,7 @@ pub struct ConfigureGameForm {
     pub game_type: String,
 }
 
+// web-app[verify game.flow.reset.route]
 // Reset the snake selections in the flow
 #[debug_handler]
 pub async fn reset_snake_selections(
@@ -268,6 +270,7 @@ pub async fn add_battlesnake(
     Ok(Redirect::to(&format!("/games/flow/{}", flow_id)).into_response())
 }
 
+// web-app[verify game.flow.remove-snake.route]
 // Remove a battlesnake from the selection
 #[debug_handler]
 pub async fn remove_battlesnake(
@@ -294,6 +297,7 @@ pub async fn remove_battlesnake(
     Ok(Redirect::to(&format!("/games/flow/{}", flow_id)).into_response())
 }
 
+// web-app[verify game.flow.search.route]
 // Search for public battlesnakes
 #[derive(Debug, Deserialize)]
 pub struct SearchQuery {

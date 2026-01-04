@@ -17,6 +17,9 @@ use crate::{
     state::AppState,
 };
 
+// web-app[impl battlesnake.list.route]
+// web-app[verify battlesnake.list.route]
+// web-app[impl battlesnake.list.auth-required]
 // List all battlesnakes for the current user
 pub async fn list_battlesnakes(
     State(state): State<AppState>,
@@ -45,6 +48,7 @@ pub async fn list_battlesnakes(
                 }
 
                 @if battlesnakes.is_empty() {
+                    // web-app[impl battlesnake.list.empty-state]
                     div class="empty-state" {
                         p { "You don't have any battlesnakes yet." }
                     }
@@ -62,10 +66,12 @@ pub async fn list_battlesnakes(
                             tbody {
                                 @for snake in &battlesnakes {
                                     tr {
+                                        // web-app[impl battlesnake.list.display-name]
                                         td { (snake.name) }
                                         td {
                                             a href=(snake.url) target="_blank" { (snake.url) }
                                         }
+                                        // web-app[impl battlesnake.list.display-visibility]
                                         td {
                                             @if snake.visibility == Visibility::Public {
                                                 span class="badge bg-success text-white" { "Public" }
@@ -74,7 +80,10 @@ pub async fn list_battlesnakes(
                                             }
                                         }
                                         td class="actions" {
+                                            // web-app[impl battlesnake.list.edit-button]
                                             a href={"/battlesnakes/"(snake.battlesnake_id)"/edit"} class="btn btn-sm btn-primary" { "Edit" }
+                                            // web-app[impl battlesnake.list.delete-button]
+                                            // web-app[impl battlesnake.delete.confirmation]
                                             form action={"/battlesnakes/"(snake.battlesnake_id)"/delete"} method="post" style="display: inline;" {
                                                 button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this battlesnake?');" { "Delete" }
                                             }
@@ -87,6 +96,7 @@ pub async fn list_battlesnakes(
                 }
 
                 div class="actions" style="margin-top: 20px;" {
+                    // web-app[impl battlesnake.list.add-button]
                     a href="/battlesnakes/new" class="btn btn-primary" { "Add New Battlesnake" }
                     a href="/me" class="btn btn-secondary" { "Back to Profile" }
                 }
@@ -96,6 +106,8 @@ pub async fn list_battlesnakes(
     ))
 }
 
+// web-app[impl battlesnake.create.form-route]
+// web-app[impl battlesnake.create.form-auth-required]
 // Show the form to create a new battlesnake
 pub async fn new_battlesnake(
     CurrentUser(_): CurrentUser,
@@ -116,18 +128,22 @@ pub async fn new_battlesnake(
                     }
                 }
 
+                // web-app[impl battlesnake.create.fields]
                 form action="/battlesnakes" method="post" {
+                    // web-app[impl battlesnake.create.name-required]
                     div class="form-group" {
                         label for="name" { "Name" }
                         input type="text" id="name" name="name" class="form-control" required {}
                     }
 
+                    // web-app[impl battlesnake.create.url-required]
                     div class="form-group" {
                         label for="url" { "URL" }
                         input type="url" id="url" name="url" class="form-control" required placeholder="https://your-battlesnake-server.com" {}
                         small class="form-text text-muted" { "The URL of your Battlesnake server" }
                     }
 
+                    // web-app[impl battlesnake.create.visibility-required]
                     div class="form-group" {
                         label for="visibility" { "Visibility" }
                         select id="visibility" name="visibility" class="form-control" required {
@@ -148,6 +164,9 @@ pub async fn new_battlesnake(
     ))
 }
 
+// web-app[impl battlesnake.create.post-route]
+// web-app[verify battlesnake.create.post-route]
+// web-app[impl battlesnake.create.post-auth-required]
 // Handle the creation of a new battlesnake
 pub async fn create_battlesnake(
     State(state): State<AppState>,
@@ -167,6 +186,7 @@ pub async fn create_battlesnake(
 
     match battlesnake_result {
         Ok(_) => {
+            // web-app[impl battlesnake.create.success-flash]
             // Flash message for success and redirect
             let updated_session = session::set_flash_message(
                 &state.db,
@@ -183,9 +203,11 @@ pub async fn create_battlesnake(
                 updated_session.flash_message
             );
 
+            // web-app[impl battlesnake.create.success-redirect]
             Ok(Redirect::to("/battlesnakes").into_response())
         }
         Err(err) => {
+            // web-app[impl battlesnake.create.duplicate-name-error]
             // Check if it's a name uniqueness error
             if err.to_string().contains("already have a battlesnake named") {
                 // Set error flash message
@@ -208,6 +230,7 @@ pub async fn create_battlesnake(
     }
 }
 
+// web-app[impl battlesnake.edit.form-route]
 // Show the form to edit an existing battlesnake
 pub async fn edit_battlesnake(
     State(state): State<AppState>,
@@ -215,6 +238,7 @@ pub async fn edit_battlesnake(
     Path(battlesnake_id): Path<Uuid>,
     page_factory: PageFactory,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
+    // web-app[impl battlesnake.edit.form-not-found]
     // Get the battlesnake by ID
     let battlesnake = battlesnake::get_battlesnake_by_id(&state.db, battlesnake_id)
         .await
@@ -222,6 +246,7 @@ pub async fn edit_battlesnake(
         .ok_or_else(|| "Battlesnake not found".to_string())
         .with_status(StatusCode::NOT_FOUND)?;
 
+    // web-app[impl battlesnake.edit.form-ownership]
     // Check if the battlesnake belongs to the current user
     if battlesnake.user_id != user.user_id {
         return Err("You don't have permission to edit this battlesnake".to_string())
@@ -243,6 +268,7 @@ pub async fn edit_battlesnake(
                     }
                 }
 
+                // web-app[impl battlesnake.edit.form-prefilled]
                 form action={"/battlesnakes/"(battlesnake_id)"/update"} method="post" {
                     div class="form-group" {
                         label for="name" { "Name" }
@@ -266,6 +292,7 @@ pub async fn edit_battlesnake(
 
                     div class="form-group" style="margin-top: 20px;" {
                         button type="submit" class="btn btn-primary" { "Update Battlesnake" }
+                        // web-app[impl battlesnake.edit.cancel]
                         a href="/battlesnakes" class="btn btn-secondary" { "Cancel" }
                     }
                 }
@@ -275,6 +302,8 @@ pub async fn edit_battlesnake(
     ))
 }
 
+// web-app[impl battlesnake.edit.post-route]
+// web-app[verify battlesnake.edit.post-route]
 // Handle the update of an existing battlesnake
 pub async fn update_battlesnake(
     State(state): State<AppState>,
@@ -282,6 +311,8 @@ pub async fn update_battlesnake(
     Path(battlesnake_id): Path<Uuid>,
     Form(update_data): Form<UpdateBattlesnake>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
+    // web-app[impl battlesnake.edit.post-ownership]
+    // web-app[impl battlesnake.permission.own-only-edit]
     // First check if the battlesnake exists and belongs to the user
     let exists = battlesnake::belongs_to_user(&state.db, battlesnake_id, user.user_id)
         .await
@@ -303,6 +334,7 @@ pub async fn update_battlesnake(
 
     match update_result {
         Ok(_) => {
+            // web-app[impl battlesnake.edit.success-flash]
             // Flash message for success and redirect
             session::set_flash_message(
                 &state.db,
@@ -313,9 +345,11 @@ pub async fn update_battlesnake(
             .await
             .wrap_err("Failed to set flash message")?;
 
+            // web-app[impl battlesnake.edit.success-redirect]
             Ok(Redirect::to("/battlesnakes").into_response())
         }
         Err(err) => {
+            // web-app[impl battlesnake.edit.duplicate-name-error]
             // Check if it's a name uniqueness error
             if err.to_string().contains("already have a battlesnake named") {
                 // Set error flash message
@@ -338,12 +372,16 @@ pub async fn update_battlesnake(
     }
 }
 
+// web-app[impl battlesnake.delete.route]
+// web-app[verify battlesnake.delete.route]
 // Handle the deletion of a battlesnake
 pub async fn delete_battlesnake(
     State(state): State<AppState>,
     CurrentUserWithSession { user, session }: CurrentUserWithSession,
     Path(battlesnake_id): Path<Uuid>,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
+    // web-app[impl battlesnake.delete.ownership]
+    // web-app[impl battlesnake.permission.own-only-delete]
     // First check if the battlesnake exists and belongs to the user
     let exists = battlesnake::belongs_to_user(&state.db, battlesnake_id, user.user_id)
         .await
@@ -359,6 +397,7 @@ pub async fn delete_battlesnake(
         .await
         .wrap_err("Failed to delete battlesnake")?;
 
+    // web-app[impl battlesnake.delete.success-flash]
     // Flash message for success and redirect
     session::set_flash_message(
         &state.db,
@@ -369,5 +408,6 @@ pub async fn delete_battlesnake(
     .await
     .wrap_err("Failed to set flash message")?;
 
+    // web-app[impl battlesnake.delete.success-redirect]
     Ok(Redirect::to("/battlesnakes").into_response())
 }

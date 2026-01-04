@@ -17,6 +17,7 @@ use crate::{
     state::AppState,
 };
 
+// web-app[verify game.view.route]
 // Display game details
 #[debug_handler]
 pub async fn view_game(
@@ -105,6 +106,7 @@ pub async fn view_game(
     ))
 }
 
+// web-app[verify game.list.route]
 // List all games
 #[debug_handler]
 pub async fn list_games(
