@@ -8,6 +8,10 @@ pub struct AppState {
     pub db: sqlx::Pool<sqlx::Postgres>,
     pub cookie_key: cja::server::cookies::CookieKey,
     pub github_oauth_config: GitHubOAuthConfig,
+    /// Connection to the legacy Battlesnake Engine database (for game backup)
+    pub engine_db: Option<sqlx::Pool<sqlx::Postgres>>,
+    /// GCS bucket name for game backups
+    pub gcs_bucket: Option<String>,
 }
 
 impl AppState {
@@ -56,10 +60,35 @@ impl AppState {
         let github_oauth_config =
             GitHubOAuthConfig::from_env().wrap_err("GitHub OAuth configuration is required")?;
 
+        // Optional: Engine database for game backup
+        let engine_db = match std::env::var("ENGINE_DATABASE_URL") {
+            Ok(url) => {
+                tracing::info!("Connecting to Engine database for game backup");
+                let engine_pool = PgPoolOptions::new()
+                    .max_connections(2)
+                    .connect(&url)
+                    .await
+                    .wrap_err("Failed to connect to Engine database")?;
+                Some(engine_pool)
+            }
+            Err(_) => {
+                tracing::info!("ENGINE_DATABASE_URL not set, game backup disabled");
+                None
+            }
+        };
+
+        // Optional: GCS bucket for game backup
+        let gcs_bucket = std::env::var("GCS_BUCKET").ok();
+        if gcs_bucket.is_some() {
+            tracing::info!("GCS bucket configured for game backup");
+        }
+
         Ok(Self {
             db: pool,
             cookie_key,
             github_oauth_config,
+            engine_db,
+            gcs_bucket,
         })
     }
 }
