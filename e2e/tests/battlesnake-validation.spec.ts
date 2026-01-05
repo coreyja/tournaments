@@ -21,8 +21,6 @@ test.describe('Battlesnake Validation', () => {
     await authenticatedPage.getByRole('button', { name: 'Create Battlesnake' }).click();
 
     // Should stay on form page (not redirect to list)
-    // web-app[verify battlesnake.name.unique-per-user]
-    // web-app[verify battlesnake.create.duplicate-name-error]
     await expect(authenticatedPage).toHaveURL('/battlesnakes/new');
   });
 
@@ -51,7 +49,6 @@ test.describe('Battlesnake Validation', () => {
     await authenticatedPage.getByRole('button', { name: 'Update Battlesnake' }).click();
 
     // Should stay on edit form (not redirect to list)
-    // web-app[verify battlesnake.edit.duplicate-name-error]
     await expect(authenticatedPage).toHaveURL(/\/battlesnakes\/.*\/edit/);
   });
 
@@ -80,7 +77,6 @@ test.describe('Battlesnake Validation', () => {
     await authenticatedPage.getByRole('button', { name: 'Create Battlesnake' }).click();
 
     // Should redirect to list with new snake
-    // web-app[verify battlesnake.name.reuse-after-delete]
     await expect(authenticatedPage).toHaveURL('/battlesnakes');
     await expect(authenticatedPage.getByText(reuseName)).toBeVisible();
   });
@@ -112,7 +108,6 @@ test.describe('Battlesnake Validation', () => {
     await authenticatedPage.getByRole('button', { name: 'Create Battlesnake' }).click();
 
     // Should succeed and redirect to list
-    // web-app[verify battlesnake.name.unique-across-users]
     await expect(authenticatedPage).toHaveURL('/battlesnakes');
     await expect(authenticatedPage.getByText(sharedName)).toBeVisible();
   });

@@ -6,7 +6,6 @@ test.describe('Authentication via Mock OAuth', () => {
     await authenticatedPage.goto('/');
 
     // Should show the welcome message with user's github login
-    // web-app[verify auth.oauth.success.redirect]
     await expect(authenticatedPage.getByText(`Welcome, ${mockUser.login}!`)).toBeVisible();
   });
 
@@ -15,7 +14,6 @@ test.describe('Authentication via Mock OAuth', () => {
     await authenticatedPage.goto('/me');
 
     // Should load profile page instead of redirecting
-    // web-app[verify auth.oauth.session.association]
     await expect(authenticatedPage).toHaveURL('/me');
     await expect(authenticatedPage.getByRole('heading', { name: 'My Profile' })).toBeVisible();
   });

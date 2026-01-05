@@ -6,7 +6,6 @@ test.describe('Battlesnake Permissions', () => {
     const nonExistentId = '00000000-0000-0000-0000-000000000000';
     const response = await authenticatedPage.goto(`/battlesnakes/${nonExistentId}/edit`);
 
-    // web-app[verify battlesnake.edit.form-not-found]
     expect(response?.status()).toBe(404);
   });
 
@@ -28,8 +27,6 @@ test.describe('Battlesnake Permissions', () => {
     );
 
     // Should get 403 (forbidden) since it either doesn't exist or doesn't belong to user
-    // web-app[verify battlesnake.edit.post-ownership]
-    // web-app[verify battlesnake.permission.own-only-edit]
     expect(response.status()).toBe(403);
   });
 
@@ -41,8 +38,6 @@ test.describe('Battlesnake Permissions', () => {
     );
 
     // Should get 403 (forbidden)
-    // web-app[verify battlesnake.delete.ownership]
-    // web-app[verify battlesnake.permission.own-only-delete]
     expect(response.status()).toBe(403);
   });
 
@@ -69,7 +64,6 @@ test.describe('Battlesnake Permissions', () => {
         visibility: 'public',
       },
     });
-    // web-app[verify battlesnake.create.post-auth-required]
     expect(response.status()).toBe(401);
   });
 
@@ -118,7 +112,6 @@ test.describe('Battlesnake Permissions', () => {
     await expect(authenticatedPage).toHaveURL('/battlesnakes');
 
     // Second user should see their snake but NOT first user's snake
-    // web-app[verify battlesnake.visibility.list-own-only]
     await expect(authenticatedPage.getByText(user2SnakeName)).toBeVisible();
     await expect(authenticatedPage.getByText(user1SnakeName)).not.toBeVisible();
   });

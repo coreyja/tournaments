@@ -5,16 +5,13 @@ test.describe('Profile Page', () => {
     await authenticatedPage.goto('/me');
 
     // Should show profile heading
-    // web-app[verify profile.title]
     await expect(authenticatedPage.getByRole('heading', { name: 'My Profile' })).toBeVisible();
 
     // Should show user's GitHub login
-    // web-app[verify profile.display.login]
     await expect(authenticatedPage.getByRole('heading', { name: mockUser.login })).toBeVisible();
 
     // Should show avatar image
     const avatar = authenticatedPage.locator('img[alt="Avatar"]');
-    // web-app[verify profile.display.avatar]
     await expect(avatar).toBeVisible();
 
     // Should show Account Details section
@@ -28,9 +25,7 @@ test.describe('Profile Page', () => {
     await authenticatedPage.goto('/me');
 
     // Mock user has name and email set
-    // web-app[verify profile.display.name]
     await expect(authenticatedPage.getByText(mockUser.name)).toBeVisible();
-    // web-app[verify profile.display.email]
     await expect(authenticatedPage.getByText(mockUser.email)).toBeVisible();
   });
 
@@ -39,8 +34,6 @@ test.describe('Profile Page', () => {
 
     await authenticatedPage.getByRole('link', { name: 'Manage Battlesnakes' }).click();
 
-    // web-app[verify profile.nav.battlesnakes]
-    // web-app[verify profile.battlesnakes.summary]
     await expect(authenticatedPage).toHaveURL('/battlesnakes');
     await expect(authenticatedPage.getByRole('heading', { name: 'Your Battlesnakes' })).toBeVisible();
   });
@@ -51,7 +44,6 @@ test.describe('Profile Page', () => {
     await authenticatedPage.getByRole('link', { name: 'Create New Game' }).click();
 
     // Should redirect to a game flow page with UUID
-    // web-app[verify profile.nav.create-game]
     await expect(authenticatedPage).toHaveURL(/\/games\/flow\/[0-9a-f-]+$/);
     await expect(authenticatedPage.getByRole('heading', { name: 'Create New Game' })).toBeVisible();
   });
@@ -61,7 +53,6 @@ test.describe('Profile Page', () => {
 
     await authenticatedPage.getByRole('link', { name: 'View All Games' }).click();
 
-    // web-app[verify profile.nav.view-games]
     await expect(authenticatedPage).toHaveURL('/games');
     await expect(authenticatedPage.getByRole('heading', { name: 'All Games' })).toBeVisible();
   });
@@ -71,7 +62,6 @@ test.describe('Profile Page', () => {
 
     await authenticatedPage.getByRole('link', { name: 'Back to Home' }).click();
 
-    // web-app[verify profile.nav.home]
     await expect(authenticatedPage).toHaveURL('/');
     await expect(authenticatedPage.getByRole('heading', { name: 'Hello, world!' })).toBeVisible();
   });
@@ -90,7 +80,6 @@ test.describe('Profile Page', () => {
 
   test('profile page requires authentication', async ({ page }) => {
     const response = await page.goto('/me');
-    // web-app[verify profile.auth-required]
     expect(response?.status()).toBe(401);
   });
 });
