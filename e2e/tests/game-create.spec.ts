@@ -18,14 +18,12 @@ test.describe('Create Game', () => {
 
     // Add the battlesnake
     const snakeCard = authenticatedPage.locator('.card', { hasText: snakeName });
-    // web-app[verify game.battlesnakes.min]
     await snakeCard.getByRole('button', { name: 'Add to Game' }).click();
 
     // Create the game
     await authenticatedPage.getByRole('button', { name: 'Create Game' }).click();
 
     // Should redirect to game details with success message
-    // web-app[verify game.create.success-redirect]
     await expect(authenticatedPage).toHaveURL(/\/games\/[0-9a-f-]+$/);
     await expect(authenticatedPage.getByRole('heading', { name: 'Game Details' })).toBeVisible();
 
@@ -103,7 +101,6 @@ test.describe('Create Game', () => {
     }
 
     // Verify all 4 are selected
-    // web-app[verify game.battlesnakes.max]
     await expect(authenticatedPage.getByText('You have selected 4 of 4 possible battlesnakes.')).toBeVisible();
 
     // Create the game
@@ -132,10 +129,8 @@ test.describe('Create Game', () => {
     await authenticatedPage.goto('/games/new');
     let snakeCard = authenticatedPage.locator('.card', { hasText: snakeName });
     await snakeCard.getByRole('button', { name: 'Add to Game' }).click();
-    // web-app[verify game.flow.board-size-selector]
     await authenticatedPage.getByLabel('Board Size').selectOption('7x7');
     await authenticatedPage.getByRole('button', { name: 'Create Game' }).click();
-    // web-app[verify game.view.display-board-size]
     await expect(authenticatedPage.getByText('Board Size: 7x7')).toBeVisible();
 
     // Test Large board
@@ -164,10 +159,8 @@ test.describe('Create Game', () => {
       await authenticatedPage.goto('/games/new');
       const snakeCard = authenticatedPage.locator('.card', { hasText: snakeName });
       await snakeCard.getByRole('button', { name: 'Add to Game' }).click();
-      // web-app[verify game.flow.game-type-selector]
       await authenticatedPage.getByLabel('Game Type').selectOption(gameType);
       await authenticatedPage.getByRole('button', { name: 'Create Game' }).click();
-      // web-app[verify game.view.display-game-type]
       await expect(authenticatedPage.getByText(`Game Type: ${gameType}`)).toBeVisible();
     }
   });
@@ -177,7 +170,6 @@ test.describe('Create Game', () => {
     await expect(authenticatedPage).toHaveURL(/\/games\/flow\//);
 
     // Should show warning about no battlesnakes
-    // web-app[verify game.flow.no-snakes-warning]
     await expect(authenticatedPage.getByText("You don't have any battlesnakes yet.")).toBeVisible();
     await expect(authenticatedPage.getByRole('link', { name: 'Create a Battlesnake' })).toBeVisible();
   });
@@ -195,20 +187,16 @@ test.describe('Create Game', () => {
     await authenticatedPage.goto('/games/new');
 
     // Should show message to select at least one
-    // web-app[verify game.flow.no-selection-warning]
     await expect(authenticatedPage.getByText('Please select at least one battlesnake to create a game.')).toBeVisible();
 
     // Create Game button should not be visible when no snakes selected
-    // web-app[verify game.flow.create-button-hidden]
     await expect(authenticatedPage.getByRole('button', { name: 'Create Game' })).not.toBeVisible();
   });
 
   test('new_game redirects to flow page', async ({ authenticatedPage }) => {
-    // web-app[verify game.create.new-route]
     await authenticatedPage.goto('/games/new');
 
     // Should redirect to a flow page with UUID
-    // web-app[verify game.create.flow-redirect]
     await expect(authenticatedPage).toHaveURL(/\/games\/flow\/[0-9a-f-]+$/);
   });
 
@@ -250,7 +238,6 @@ test.describe('Create Game', () => {
 
     // Add the public snake
     const searchResultCard = authenticatedPage.locator('.card', { hasText: publicSnakeName });
-    // web-app[verify game.flow.search.add-result]
     await searchResultCard.getByRole('button', { name: 'Add to Game' }).click();
 
     // Add own snake
@@ -333,7 +320,6 @@ test.describe('Create Game', () => {
     await authenticatedPage.getByRole('button', { name: 'Reset Selection' }).click();
 
     // Verify selections are reset
-    // web-app[verify game.flow.reset.clears-all]
     await expect(authenticatedPage.getByText('Please select at least one battlesnake to create a game.')).toBeVisible();
   });
 
@@ -376,7 +362,6 @@ test.describe('Create Game', () => {
     await fifthSnakeCard.getByRole('button', { name: 'Add to Game' }).click();
 
     // Should still have only 4 selected (5th wasn't added)
-    // web-app[verify game.flow.add-snake.max-warning]
     await expect(authenticatedPage.getByText('You have selected 4 of 4 possible battlesnakes.')).toBeVisible();
 
     // The 5th snake card should still show "Add to Game" (not selected)
@@ -415,7 +400,6 @@ test.describe('Create Game', () => {
     await authenticatedPage.getByRole('button', { name: 'Search' }).click();
 
     // Should NOT find the private snake
-    // web-app[verify game.flow.search.private-hidden]
     await expect(authenticatedPage.getByText('No public battlesnakes found matching your search.')).toBeVisible();
 
     // Search for the public snake
@@ -423,7 +407,6 @@ test.describe('Create Game', () => {
     await authenticatedPage.getByRole('button', { name: 'Search' }).click();
 
     // Should find the public snake
-    // web-app[verify game.flow.search.public-only]
     await expect(authenticatedPage.getByRole('heading', { name: 'Search Results' })).toBeVisible();
     await expect(authenticatedPage.getByText(publicSnakeName)).toBeVisible();
   });
@@ -457,7 +440,6 @@ test.describe('Create Game', () => {
 
     // Should see game details page content
     await expect(authenticatedPage.getByRole('heading', { name: 'Game Details' })).toBeVisible();
-    // web-app[verify game.view.results-table]
     await expect(authenticatedPage.getByRole('heading', { name: 'Game Results' })).toBeVisible();
 
     // Should see the snake in the results

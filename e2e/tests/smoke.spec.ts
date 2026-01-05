@@ -9,8 +9,6 @@ test.describe('Smoke Tests', () => {
     await expect(page.getByText('Welcome to the Arena application!')).toBeVisible();
   });
 
-  // web-app[verify homepage.unauth.message]
-  // web-app[verify homepage.unauth.login-link]
   test('shows login link for unauthenticated users', async ({ page }) => {
     await page.goto('/');
 

@@ -22,13 +22,11 @@ use crate::{
 
 use super::auth::CurrentSession;
 
-// web-app[impl auth.oauth.initiation]
 // Route handler for initiating GitHub OAuth flow
 pub async fn github_auth(
     State(state): State<AppState>,
     current_session: CurrentSession,
 ) -> ServerResult<Redirect, StatusCode> {
-    // web-app[impl auth.oauth.state.generation]
     // Check if OAuth is configured
     let oauth_config = state.github_oauth_config.as_ref().ok_or_else(|| {
         ServerError(
@@ -40,7 +38,6 @@ pub async fn github_auth(
     // Generate a random state for CSRF protection
     let oauth_state = format!("{}", uuid::Uuid::new_v4());
 
-    // web-app[impl auth.oauth.state.storage]
     // Store the state in the session
     set_github_oauth_state(
         &state.db,
@@ -52,7 +49,6 @@ pub async fn github_auth(
 
     // Build OAuth URL using the AppState's github_oauth_config
     let auth_url = format!(
-        // web-app[impl auth.oauth.scope]
         "{}?client_id={}&redirect_uri={}&state={}&scope={}",
         oauth_config.oauth_url,
         oauth_config.client_id,
@@ -64,7 +60,6 @@ pub async fn github_auth(
     Ok(Redirect::to(&auth_url))
 }
 
-// web-app[impl auth.oauth.callback.route]
 // Route handler for GitHub OAuth callback
 pub async fn github_auth_callback(
     State(state): State<AppState>,
@@ -72,7 +67,6 @@ pub async fn github_auth_callback(
     current_session: CurrentSession,
     flasher: Flasher,
 ) -> ServerResult<impl IntoResponse, StatusCode> {
-    // web-app[impl auth.oauth.state.validation]
     // Check if OAuth is configured
     let oauth_config = state.github_oauth_config.as_ref().ok_or_else(|| {
         ServerError(
@@ -84,7 +78,6 @@ pub async fn github_auth_callback(
     // Verify the state parameter to prevent CSRF attacks
     let session_oauth_state = current_session.session.github_oauth_state;
 
-    // web-app[impl auth.oauth.state.missing]
     let session_state = match session_oauth_state {
         Some(state) => state,
         None => {
@@ -95,7 +88,6 @@ pub async fn github_auth_callback(
         }
     };
 
-    // web-app[impl auth.oauth.state.mismatch]
     if params.state != session_state {
         return Err(ServerError(
             eyre!("GitHub OAuth state mismatch"),
@@ -103,13 +95,11 @@ pub async fn github_auth_callback(
         ));
     }
 
-    // web-app[impl auth.oauth.state.cleanup]
     // Clear the state from the session since it's no longer needed
     clear_github_oauth_state(&state.db, current_session.session.session_id)
         .await
         .wrap_err("Failed to clear OAuth state from session")?;
 
-    // web-app[impl auth.oauth.token.exchange]
     // Exchange code for access token
     let client = reqwest::Client::new();
     let token_response = client
@@ -128,7 +118,6 @@ pub async fn github_auth_callback(
         .await
         .wrap_err("Failed to parse GitHub token response")?;
 
-    // web-app[impl auth.oauth.user.fetch]
     // Get user data from GitHub
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -152,20 +141,16 @@ pub async fn github_auth_callback(
         .await
         .wrap_err("Failed to parse GitHub user response")?;
 
-    // web-app[impl auth.oauth.user.creation]
-    // web-app[impl auth.oauth.user.update]
     // Create or update user in the database
     let user = create_or_update_user(&state.db, github_user, token_response)
         .await
         .wrap_err("Failed to create or update user")?;
 
-    // web-app[impl auth.oauth.session.association]
     // Associate the user with the current session
     associate_user_with_session(&state.db, current_session.session.session_id, user.user_id)
         .await
         .wrap_err("Failed to associate user with session")?;
 
-    // web-app[impl auth.oauth.success.redirect]
     // Redirect to home page with success message
     flasher
         .add_flash("Successfully logged in with GitHub!")
@@ -173,26 +158,21 @@ pub async fn github_auth_callback(
     Ok(Redirect::to("/"))
 }
 
-// web-app[impl auth.logout.route]
-// web-app[verify auth.logout.route]
 // Route handler for logging out
 pub async fn logout(
     State(state): State<AppState>,
     current_session: CurrentSession,
     flasher: Flasher,
 ) -> impl IntoResponse {
-    // web-app[impl auth.logout.session.disassociation]
     // Disassociate user from the session (if logged in)
     if current_session.user.is_some() {
         let _ = disassociate_user_from_session(&state.db, current_session.session.session_id).await;
     }
 
-    // web-app[impl auth.logout.flash]
     // Add flash message, but don't fail the request if it doesn't work
     if let Err(err) = flasher.add_flash("You have been logged out").await {
         tracing::warn!(?err, "Failed to set logout flash message");
     }
 
-    // web-app[impl auth.logout.redirect]
     Redirect::to("/")
 }

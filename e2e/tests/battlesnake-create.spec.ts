@@ -10,7 +10,6 @@ test.describe('Create Battlesnake', () => {
     await expect(authenticatedPage.getByRole('heading', { name: 'Add New Battlesnake' })).toBeVisible();
 
     // Fill in the form
-    // web-app[verify battlesnake.create.fields]
     await authenticatedPage.getByLabel('Name').fill(uniqueName);
     await authenticatedPage.getByLabel('URL').fill(snakeUrl);
     await authenticatedPage.getByLabel('Visibility').selectOption('public');
@@ -19,7 +18,6 @@ test.describe('Create Battlesnake', () => {
     await authenticatedPage.getByRole('button', { name: 'Create Battlesnake' }).click();
 
     // Should redirect to /battlesnakes
-    // web-app[verify battlesnake.create.success-redirect]
     await expect(authenticatedPage).toHaveURL('/battlesnakes');
 
     // New battlesnake should appear in the list
@@ -38,7 +36,6 @@ test.describe('Create Battlesnake', () => {
 
     await authenticatedPage.getByRole('button', { name: 'Create Battlesnake' }).click();
 
-    // web-app[verify battlesnake.visibility.private]
     await expect(authenticatedPage).toHaveURL('/battlesnakes');
     await expect(authenticatedPage.getByText(uniqueName)).toBeVisible();
   });
@@ -56,7 +53,6 @@ test.describe('Create Battlesnake', () => {
 
     // Should see success flash message (check for the alert container with success styling)
     const successAlert = authenticatedPage.locator('.alert-success');
-    // web-app[verify battlesnake.create.success-flash]
     await expect(successAlert).toBeVisible();
     await expect(successAlert).toContainText('Battlesnake created successfully!');
   });
@@ -64,7 +60,6 @@ test.describe('Create Battlesnake', () => {
   test('new form requires authentication', async ({ page }) => {
     // Without authentication, should get 401
     const response = await page.goto('/battlesnakes/new');
-    // web-app[verify battlesnake.create.form-auth-required]
     expect(response?.status()).toBe(401);
   });
 });

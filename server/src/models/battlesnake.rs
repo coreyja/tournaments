@@ -8,13 +8,10 @@ use uuid::Uuid;
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Type)]
 #[sqlx(type_name = "text", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
-// web-app[impl battlesnake.model.visibility.default]
 #[derive(Default)]
 pub enum Visibility {
-    // web-app[impl battlesnake.visibility.public]
     #[default]
     Public,
-    // web-app[impl battlesnake.visibility.private]
     Private,
 }
 
@@ -41,12 +38,6 @@ impl FromStr for Visibility {
 
 // Default implementation for Visibility - default to Public
 
-// web-app[impl battlesnake.model.id]
-// web-app[impl battlesnake.model.user-id]
-// web-app[impl battlesnake.model.name]
-// web-app[impl battlesnake.model.url]
-// web-app[impl battlesnake.model.visibility]
-// web-app[impl battlesnake.model.timestamps]
 // Battlesnake model for our application
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Battlesnake {
@@ -77,8 +68,6 @@ pub struct UpdateBattlesnake {
 
 // Database functions for battlesnake management
 
-// web-app[impl battlesnake.visibility.list-own-only]
-// web-app[impl battlesnake.list.sorted]
 // Get all battlesnakes for a user
 pub async fn get_battlesnakes_by_user_id(
     pool: &PgPool,
@@ -174,7 +163,6 @@ pub async fn create_battlesnake(
     match result {
         Ok(battlesnake) => Ok(battlesnake),
         Err(err) => {
-            // web-app[impl battlesnake.name.unique-per-user]
             // Check if this is a unique violation error
             if let Some(db_err) = err.as_database_error()
                 && let Some(constraint) = db_err.constraint()

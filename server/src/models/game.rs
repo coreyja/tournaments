@@ -102,11 +102,6 @@ impl FromStr for GameStatus {
     }
 }
 
-// web-app[impl game.model.id]
-// web-app[impl game.model.board-size]
-// web-app[impl game.model.game-type]
-// web-app[impl game.model.status]
-// web-app[impl game.model.timestamps]
 // Game model for our application
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Game {
@@ -147,7 +142,6 @@ struct GameWithWinnerRow {
 
 // Database functions for game management
 
-// web-app[impl game.list.sorted]
 // Get all games
 pub async fn get_all_games(pool: &PgPool) -> cja::Result<Vec<Game>> {
     let rows = sqlx::query!(
@@ -256,7 +250,6 @@ pub async fn create_game_with_snakes(
     pool: &PgPool,
     data: CreateGameWithSnakes,
 ) -> cja::Result<Game> {
-    // web-app[impl game.battlesnakes.min]
     // Validate number of battlesnakes
     if data.battlesnake_ids.is_empty() {
         return Err(cja::color_eyre::eyre::eyre!(
@@ -264,14 +257,12 @@ pub async fn create_game_with_snakes(
         ));
     }
 
-    // web-app[impl game.battlesnakes.max]
     if data.battlesnake_ids.len() > 4 {
         return Err(cja::color_eyre::eyre::eyre!(
             "A maximum of 4 battlesnakes are allowed in a game"
         ));
     }
 
-    // web-app[impl game.battlesnakes.no-duplicates]
     // Check for duplicate battlesnake IDs
     let mut unique_ids = data.battlesnake_ids.clone();
     unique_ids.sort();
