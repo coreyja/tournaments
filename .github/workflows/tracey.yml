@@ -27,15 +27,7 @@ jobs:
 
       - name: Install Tracey
         run: |
-          # Build tracey from source (v1.0.0 on crates.io is broken)
-          echo "Building tracey from source due to broken crates.io release..."
-          git clone https://github.com/bearcove/tracey /tmp/tracey --depth 1
-          cd /tmp/tracey
-          cargo build --release
-          # Install to cargo bin directory
-          cp target/release/tracey ~/.cargo/bin/
-          echo "Tracey built and installed from source"
-          # Verify installation
+          cargo install tracey
           tracey --help | head -5
 
       - name: Generate Tracey Rules
