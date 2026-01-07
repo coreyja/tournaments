@@ -149,12 +149,17 @@ pub struct GameResult {
 }
 
 /// Run a game and update the database
+/// Broadcasts frames to board viewer via the game registry
 pub async fn run_and_store_game(
     pool: &sqlx::PgPool,
     game_id: Uuid,
-    websocket_sender: Option<tokio::sync::mpsc::Sender<String>>,
+    _websocket_sender: Option<tokio::sync::mpsc::Sender<String>>,
 ) -> cja::Result<()> {
     use crate::models::{game, game_battlesnake};
+    use crate::routes::board_viewer::{
+        game_registry, game_state_to_frame, get_snake_color, BoardViewerEvent, GameEndData,
+        GameMetadata,
+    };
 
     info!("Running game {}", game_id);
 
@@ -169,30 +174,63 @@ pub async fn run_and_store_game(
 
     let snake_ids: Vec<_> = battlesnakes.iter().map(|b| b.battlesnake_id).collect();
 
+    // Build color map for snakes
+    let snake_colors: HashMap<Uuid, String> = snake_ids
+        .iter()
+        .enumerate()
+        .map(|(i, id)| (*id, get_snake_color(i)))
+        .collect();
+    let snake_colors_ref = &snake_colors;
+
     // Create game runner
     let runner = GameRunner::new();
 
-    // Run the game
+    // Get game registry for broadcasting
+    let registry = game_registry().clone();
+    let registry_ref = &registry;
+
+    // Run the game with board viewer broadcasting
     let result = runner
         .run_game_with_random_moves(
             game_id,
             snake_ids,
             11, // 11x11 board for now
             11,
-            |state, events| {
-                // Send state updates via WebSocket if available
-                if let Some(sender) = &websocket_sender {
-                    let message = serde_json::json!({
-                        "type": "game_state",
-                        "state": state.to_api_format(),
-                        "events": events,
-                    });
+            |state, _events| {
+                // Convert to board viewer format and broadcast
+                let frame_data = game_state_to_frame(&state, snake_colors_ref);
+                let event = BoardViewerEvent::Frame { data: frame_data };
 
-                    let _ = sender.try_send(message.to_string());
-                }
+                // Broadcast is async, but callback is sync - use try_send pattern
+                // The registry handles this gracefully (drops if no receivers)
+                let registry_clone = registry_ref.clone();
+                let _ = tokio::runtime::Handle::try_current().map(|handle| {
+                    handle.spawn(async move {
+                        registry_clone.broadcast(game_id, event).await;
+                    });
+                });
             },
         )
         .await?;
+
+    // Broadcast game end event
+    let game_end_event = BoardViewerEvent::GameEnd {
+        data: GameEndData {
+            game: GameMetadata {
+                id: game_id.to_string(),
+                status: "complete".to_string(),
+                width: 11,
+                height: 11,
+                ruleset: serde_json::json!({}),
+                ruleset_name: "standard".to_string(),
+                map: "standard".to_string(),
+            },
+        },
+    };
+    registry.broadcast(game_id, game_end_event).await;
+
+    // Clean up the broadcast channel
+    registry.cleanup(game_id).await;
 
     // Store results in database
     for (snake_id, placement) in result.placements {

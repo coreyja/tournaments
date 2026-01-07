@@ -6,6 +6,7 @@ use crate::{components::page_factory::PageFactory, errors::ServerResult, state::
 // Include route modules
 pub mod auth;
 pub mod battlesnake;
+pub mod board_viewer;
 pub mod game;
 pub mod github_auth;
 
@@ -63,6 +64,12 @@ pub fn routes(app_state: AppState) -> axum::Router {
             axum::routing::post(game::remove_battlesnake),
         )
         .route("/games/flow/{id}/search", get(game::search_battlesnakes))
+        // Board viewer API (compatible with board.battlesnake.com)
+        .route("/api/games/{id}", get(board_viewer::get_game_metadata))
+        .route(
+            "/api/games/{id}/events",
+            axum::routing::any(board_viewer::game_events_ws),
+        )
         // Static files
         .route(
             "/static/{*path}",
