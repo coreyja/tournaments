@@ -9,6 +9,7 @@ use tracing::info;
 
 mod backup;
 mod cron;
+mod engine;
 mod engine_models;
 mod errors;
 mod flasher;
