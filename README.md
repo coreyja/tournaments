@@ -1,6 +1,6 @@
 # Arena
 
-A tournament management application with GitHub OAuth authentication.
+A Battlesnake platform for running games and tournaments, with GitHub OAuth authentication.
 
 ## Setup
 
