@@ -1,4 +1,5 @@
--- Add error tracking fields to jobs table (required by cja crate)
+-- Add error tracking fields to jobs table
+-- Add migration script here
 
 -- Add error_count column (tracks number of failures)
 ALTER TABLE jobs
