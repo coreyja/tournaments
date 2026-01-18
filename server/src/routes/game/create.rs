@@ -365,6 +365,16 @@ pub async fn create_game(
                 .await
                 .wrap_err("Failed to create game")?;
 
+            // Enqueue a job to run the game asynchronously
+            let job = crate::jobs::GameRunnerJob { game_id };
+            cja::jobs::Job::enqueue(
+                job,
+                state.clone(),
+                format!("Game {} created via UI", game_id),
+            )
+            .await
+            .wrap_err("Failed to enqueue game runner job")?;
+
             // Delete the flow
             GameCreationFlow::delete(&state.db, flow_id, user.user_id)
                 .await
@@ -374,7 +384,7 @@ pub async fn create_game(
             session::set_flash_message(
                 &state.db,
                 session.session_id,
-                "Game created successfully!".to_string(),
+                "Game created and queued for execution!".to_string(),
                 session::FLASH_TYPE_SUCCESS,
             )
             .await

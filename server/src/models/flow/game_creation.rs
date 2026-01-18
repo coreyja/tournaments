@@ -203,18 +203,13 @@ impl GameCreationFlow {
         })
     }
 
-    // Create the game from the flow
+    // Create the game from the flow (does not run the game - caller should enqueue a job)
     pub async fn create_game(&self, pool: &PgPool) -> cja::Result<Uuid> {
         let create_request = self.to_create_game_request()?;
 
         let game = game::create_game_with_snakes(pool, create_request)
             .await
             .wrap_err("Failed to create game")?;
-
-        // Enqueue a job to run the game asynchronously
-        game::run_game(pool, game.game_id)
-            .await
-            .wrap_err("Failed to run game")?;
 
         Ok(game.game_id)
     }
