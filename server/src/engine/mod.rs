@@ -7,8 +7,8 @@ use battlesnake_game_types::types::{Move, RandomReasonableMovesGame};
 use battlesnake_game_types::wire_representation::{
     BattleSnake, Board, Game, NestedGame, Position, Ruleset, Settings,
 };
-use rand::seq::SliceRandom;
 use rand::Rng;
+use rand::seq::SliceRandom;
 use std::collections::VecDeque;
 use uuid::Uuid;
 
@@ -433,7 +433,11 @@ mod tests {
             let result = run_game_with_random_moves(game);
 
             // Should have placements for all 4 snakes
-            assert_eq!(result.placements.len(), 4, "All snakes should have placements");
+            assert_eq!(
+                result.placements.len(),
+                4,
+                "All snakes should have placements"
+            );
 
             // All snake IDs should be unique
             let mut ids = result.placements.clone();
@@ -442,10 +446,16 @@ mod tests {
             assert_eq!(ids.len(), 4, "All placements should be unique snakes");
 
             // Game should end within MAX_TURNS
-            assert!(result.final_turn <= MAX_TURNS, "Game should end within MAX_TURNS");
+            assert!(
+                result.final_turn <= MAX_TURNS,
+                "Game should end within MAX_TURNS"
+            );
 
             // Game should have progressed at least a few turns
-            assert!(result.final_turn > 0, "Game should have run for at least one turn");
+            assert!(
+                result.final_turn > 0,
+                "Game should have run for at least one turn"
+            );
         }
     }
 

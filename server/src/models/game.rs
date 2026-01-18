@@ -480,12 +480,8 @@ pub async fn run_game(pool: &PgPool, game_id: Uuid) -> cja::Result<()> {
     }
 
     // Create the initial game state and run the simulation
-    let initial_state = crate::engine::create_initial_game(
-        game_id,
-        game.board_size,
-        game.game_type,
-        &battlesnakes,
-    );
+    let initial_state =
+        crate::engine::create_initial_game(game_id, game.board_size, game.game_type, &battlesnakes);
 
     let result = crate::engine::run_game_with_random_moves(initial_state);
 
