@@ -359,21 +359,11 @@ pub async fn create_game(
     let validate_result = flow.validate();
     match validate_result {
         Ok(_) => {
-            // Create the game
+            // Create the game and enqueue a job to run it
             let game_id = flow
-                .create_game(&state.db)
+                .create_game_and_enqueue(state.clone())
                 .await
                 .wrap_err("Failed to create game")?;
-
-            // Enqueue a job to run the game asynchronously
-            let job = crate::jobs::GameRunnerJob { game_id };
-            cja::jobs::Job::enqueue(
-                job,
-                state.clone(),
-                format!("Game {} created via UI", game_id),
-            )
-            .await
-            .wrap_err("Failed to enqueue game runner job")?;
 
             // Delete the flow
             GameCreationFlow::delete(&state.db, flow_id, user.user_id)

@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use crate::models::battlesnake::{self, Battlesnake};
 use crate::models::game::{self, CreateGameWithSnakes, GameBoardSize, GameType};
+use crate::state::AppState;
 
 // Flow model for the game creation process
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -203,13 +204,25 @@ impl GameCreationFlow {
         })
     }
 
-    // Create the game from the flow (does not run the game - caller should enqueue a job)
-    pub async fn create_game(&self, pool: &PgPool) -> cja::Result<Uuid> {
+    // Create the game from the flow and enqueue a job to run it
+    pub async fn create_game_and_enqueue(&self, app_state: AppState) -> cja::Result<Uuid> {
         let create_request = self.to_create_game_request()?;
 
-        let game = game::create_game_with_snakes(pool, create_request)
+        let game = game::create_game_with_snakes(&app_state.db, create_request)
             .await
             .wrap_err("Failed to create game")?;
+
+        // Enqueue a job to run the game asynchronously
+        let job = crate::jobs::GameRunnerJob {
+            game_id: game.game_id,
+        };
+        cja::jobs::Job::enqueue(
+            job,
+            app_state,
+            format!("Game {} created via flow", game.game_id),
+        )
+        .await
+        .wrap_err("Failed to enqueue game runner job")?;
 
         Ok(game.game_id)
     }
