@@ -66,7 +66,7 @@ google-cloud-storage = "0.22"
 zstd = "0.13"
 thiserror = "1"
 
-battlesnake-game-types = { git = "https://github.com/coreyja/battlesnake-game-types", branch = "main" }
+battlesnake-game-types = { git = "https://github.com/fables-tales/battlesnake-game-types", branch = "main" }
 
 [build-dependencies]
 vergen = { version = "8.3.1", features = [
