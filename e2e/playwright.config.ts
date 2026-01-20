@@ -56,6 +56,8 @@ export default defineConfig({
         GITHUB_CLIENT_ID: 'mock_client_id',
         GITHUB_CLIENT_SECRET: 'mock_client_secret',
         GITHUB_REDIRECT_URI: `${BASE_URL}/auth/github/callback`,
+        // Faster job polling for e2e tests (default is 60 seconds)
+        JOB_POLL_INTERVAL_SECS: '2',
       },
     },
   ],

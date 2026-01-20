@@ -12,6 +12,7 @@ use crate::{
     components::flash::Flash,
     components::page_factory::PageFactory,
     errors::{ServerResult, WithStatus},
+    models::game::GameStatus,
     models::game_battlesnake,
     routes::auth::CurrentUser,
     state::AppState,
@@ -46,13 +47,29 @@ pub async fn view_game(
                 }
 
                 div class="card mb-4" {
-                    div class="card-header" {
-                        h2 { "Game " (game_id) }
+                    div class="card-header d-flex justify-content-between align-items-center" {
+                        h2 class="mb-0" { "Game " (game_id) }
+                        @match game.status {
+                            GameStatus::Waiting => span class="badge bg-secondary" { "Waiting" },
+                            GameStatus::Running => span class="badge bg-primary" { "Running..." },
+                            GameStatus::Finished => span class="badge bg-success" { "Finished" },
+                        }
                     }
                     div class="card-body" {
                         p { "Board Size: " (game.board_size.as_str()) }
                         p { "Game Type: " (game.game_type.as_str()) }
+                        p { "Status: " (game.status.as_str()) }
                         p { "Created: " (game.created_at.format("%Y-%m-%d %H:%M:%S")) }
+                    }
+                }
+
+                @if game.status != GameStatus::Finished {
+                    div class="alert alert-info mb-4" {
+                        p class="mb-0" {
+                            "This game is still being processed. "
+                            a href="" onclick="location.reload(); return false;" { "Refresh" }
+                            " to check for updates."
+                        }
                     }
                 }
 

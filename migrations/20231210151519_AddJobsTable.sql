@@ -1,5 +1,6 @@
+-- Add migration script here
 CREATE TABLE
-  Jobs (
+  IF NOT EXISTS Jobs (
     job_id UUID PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
     payload JSONB NOT NULL,

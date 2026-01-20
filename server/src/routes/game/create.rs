@@ -359,9 +359,9 @@ pub async fn create_game(
     let validate_result = flow.validate();
     match validate_result {
         Ok(_) => {
-            // Create the game
+            // Create the game and enqueue a job to run it
             let game_id = flow
-                .create_game(&state.db)
+                .create_game_and_enqueue(state.clone())
                 .await
                 .wrap_err("Failed to create game")?;
 
@@ -374,7 +374,7 @@ pub async fn create_game(
             session::set_flash_message(
                 &state.db,
                 session.session_id,
-                "Game created successfully!".to_string(),
+                "Game created and queued for execution!".to_string(),
                 session::FLASH_TYPE_SUCCESS,
             )
             .await

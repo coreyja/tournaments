@@ -1,5 +1,6 @@
+-- Add migration script here
 CREATE TABLE
-  Crons (
+  IF NOT EXISTS Crons (
     cron_id UUID PRIMARY KEY,
     name TEXT NOT NULL,
     last_run_at TIMESTAMP

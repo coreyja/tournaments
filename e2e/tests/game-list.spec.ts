@@ -114,7 +114,19 @@ test.describe('Game List', () => {
     // Should show the snake name in the table
     await expect(authenticatedPage.getByText(snakeName)).toBeVisible();
 
-    // Should show placement badge (1st place for single snake)
+    // Games now run asynchronously via job queue. Poll until the game completes
+    // by reloading the page periodically until we see the placement badge.
+    // The page shows "In Progress" while waiting and "1st Place" when done.
+    // Job worker polls every 2 seconds in e2e tests (configured in playwright.config.ts).
+    const maxAttempts = 15;
+    let placementVisible = false;
+    for (let attempt = 0; attempt < maxAttempts && !placementVisible; attempt++) {
+      placementVisible = await authenticatedPage.getByText('1st Place').isVisible();
+      if (!placementVisible) {
+        await authenticatedPage.waitForTimeout(2000); // Wait 2 seconds between reloads
+        await authenticatedPage.reload();
+      }
+    }
     await expect(authenticatedPage.getByText('1st Place')).toBeVisible();
   });
 

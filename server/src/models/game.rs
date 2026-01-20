@@ -460,8 +460,13 @@ pub async fn update_game_status(
     })
 }
 
-// Run a game and assign random placements
+// Run a game using the game engine
 pub async fn run_game(pool: &PgPool, game_id: Uuid) -> cja::Result<()> {
+    // Get the game details
+    let game = get_game_by_id(pool, game_id)
+        .await?
+        .ok_or_else(|| cja::color_eyre::eyre::eyre!("Game not found"))?;
+
     // Update status to running
     update_game_status(pool, game_id, GameStatus::Running).await?;
 
@@ -474,23 +479,27 @@ pub async fn run_game(pool: &PgPool, game_id: Uuid) -> cja::Result<()> {
         return Err(cja::color_eyre::eyre::eyre!("No battlesnakes in the game"));
     }
 
-    // For now, just assign random placements
-    use rand::seq::SliceRandom;
-    use rand::thread_rng;
+    // Create the initial game state and run the simulation
+    let initial_state =
+        crate::engine::create_initial_game(game_id, game.board_size, game.game_type, &battlesnakes);
 
-    // Create indices vector
-    let mut indices: Vec<usize> = (0..battlesnakes.len()).collect();
+    let result = crate::engine::run_game_with_random_moves(initial_state);
 
-    // Create a new thread_rng inside the async block - this avoids the Send issue
-    {
-        let mut rng = thread_rng();
-        indices.shuffle(&mut rng);
-    }
+    tracing::info!(
+        game_id = %game_id,
+        final_turn = result.final_turn,
+        "Game completed"
+    );
 
-    // Assign placements based on shuffled indices
-    for (i, battlesnake) in indices.iter().enumerate() {
-        let placement = (i + 1) as i32; // 1-based placement
-        let battlesnake_id = battlesnakes[*battlesnake].battlesnake_id;
+    // Assign placements based on engine results
+    // placements[0] = winner (placement 1), placements[1] = 2nd place, etc.
+    for (i, snake_id) in result.placements.iter().enumerate() {
+        let placement = (i + 1) as i32;
+
+        // Parse the snake_id back to UUID
+        let battlesnake_id: Uuid = snake_id
+            .parse()
+            .wrap_err_with(|| format!("Invalid battlesnake ID: {}", snake_id))?;
 
         crate::models::game_battlesnake::set_game_result(
             pool,

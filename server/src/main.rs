@@ -9,6 +9,7 @@ use tracing::info;
 
 mod backup;
 mod cron;
+mod engine;
 mod engine_models;
 mod errors;
 mod flasher;
@@ -78,10 +79,16 @@ async fn spawn_application_tasks(
     // Initialize job worker if enabled
     if is_feature_enabled("JOBS") {
         info!("Jobs Enabled");
+        // Allow configuring job poll interval via env var (default 60 seconds)
+        let job_poll_interval_secs: u64 = std::env::var("JOB_POLL_INTERVAL_SECS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(60);
+        info!("Job poll interval: {} seconds", job_poll_interval_secs);
         futures.push(tokio::spawn(cja::jobs::worker::job_worker(
             app_state.clone(),
             jobs::Jobs,
-            std::time::Duration::from_secs(60),
+            std::time::Duration::from_secs(job_poll_interval_secs),
             20,
         )));
     } else {
