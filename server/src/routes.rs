@@ -68,6 +68,8 @@ pub fn routes(app_state: AppState) -> axum::Router {
             "/static/{*path}",
             get(crate::static_assets::serve_static_file),
         )
+        // Internal routes
+        .route("/_/version", get(version_page))
         // Add trace layer for debugging
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .with_state(app_state)
@@ -165,4 +167,56 @@ async fn profile_page(
             }
         }),
     ))
+}
+
+/// Version info page showing build metadata
+async fn version_page() -> impl IntoResponse {
+    html! {
+        html {
+            head {
+                title { "Version Info" }
+                style {
+                    "body { font-family: monospace; padding: 20px; max-width: 800px; margin: 0 auto; }"
+                    "h1 { color: #333; }"
+                    "table { border-collapse: collapse; width: 100%; }"
+                    "th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }"
+                    "th { background-color: #f5f5f5; }"
+                    ".value { font-family: monospace; color: #0066cc; }"
+                }
+            }
+            body {
+                h1 { "Arena Version Info" }
+                table {
+                    tr {
+                        th { "Property" }
+                        th { "Value" }
+                    }
+                    tr {
+                        td { "Git SHA" }
+                        td class="value" { (env!("VERGEN_GIT_SHA")) }
+                    }
+                    tr {
+                        td { "Git Branch" }
+                        td class="value" { (option_env!("VERGEN_GIT_BRANCH").unwrap_or("unknown")) }
+                    }
+                    tr {
+                        td { "Git Commit Date" }
+                        td class="value" { (option_env!("VERGEN_GIT_COMMIT_TIMESTAMP").unwrap_or("unknown")) }
+                    }
+                    tr {
+                        td { "Build Timestamp" }
+                        td class="value" { (option_env!("VERGEN_BUILD_TIMESTAMP").unwrap_or("unknown")) }
+                    }
+                    tr {
+                        td { "Rust Version" }
+                        td class="value" { (option_env!("VERGEN_RUSTC_SEMVER").unwrap_or("unknown")) }
+                    }
+                    tr {
+                        td { "Cargo Profile" }
+                        td class="value" { (option_env!("VERGEN_CARGO_PROFILE").unwrap_or("unknown")) }
+                    }
+                }
+            }
+        }
+    }
 }
