@@ -24,7 +24,8 @@ RUN mkdir -p server/src mock-github-oauth/src && \
     echo "" > mock-github-oauth/src/lib.rs
 
 # Build dependencies only (for caching)
-RUN cargo build --release --package arena
+# VERGEN_IDEMPOTENT allows build without .git directory (uses placeholder values)
+RUN VERGEN_IDEMPOTENT=1 cargo build --release --package arena
 
 # Remove dummy files
 RUN rm -rf server/src
@@ -35,13 +36,16 @@ COPY server/static ./server/static
 COPY migrations ./migrations
 COPY .sqlx ./.sqlx
 
+# Copy .git directory for vergen to extract real git info in final binary
+COPY .git ./.git
+
 # Set SQLX offline mode
 ENV SQLX_OFFLINE=true
 
 # Touch the main.rs to ensure rebuild with actual source
 RUN touch server/src/main.rs
 
-# Build the application
+# Build the application (with real git info from .git)
 RUN cargo build --release --package arena
 
 # Runtime stage
