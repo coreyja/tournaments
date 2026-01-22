@@ -27,12 +27,13 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache cargo registry
+      - name: Cache cargo registry and binaries
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            ~/.cargo/bin
             target
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
@@ -40,7 +41,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features postgres
+        run: command -v sqlx || cargo install sqlx-cli --no-default-features --features postgres
 
       - name: Run migrations
         run: sqlx migrate run
