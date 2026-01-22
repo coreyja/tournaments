@@ -477,8 +477,8 @@ pub async fn run_game(
     game_channels: &GameChannels,
     game_id: Uuid,
 ) -> cja::Result<()> {
-    use crate::engine::frame::{game_to_frame, DeathInfo};
     use crate::engine::MAX_TURNS;
+    use crate::engine::frame::{DeathInfo, game_to_frame};
     use battlesnake_game_types::types::{Move, RandomReasonableMovesGame};
     use rand::SeedableRng;
 
