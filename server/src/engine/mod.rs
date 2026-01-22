@@ -307,7 +307,9 @@ fn apply_turn(mut game: Game, moves: &[(String, Move)]) -> Game {
     }
 
     // Remove eaten food (in reverse order to preserve indices)
+    // Deduplicate in case multiple snakes ate the same food (head-to-head on food)
     eaten_food.sort();
+    eaten_food.dedup();
     eaten_food.reverse();
     for idx in eaten_food {
         game.board.food.remove(idx);
@@ -531,6 +533,52 @@ mod tests {
 
         // Snake should be eliminated (health = 0)
         assert_eq!(game.board.snakes[0].health, 0);
+    }
+
+    #[test]
+    fn test_head_to_head_collision_on_food() {
+        // Regression test: two snakes colliding head-to-head on a food tile
+        // should not panic due to double-removal of the same food index
+        let mut game = create_test_game(2);
+
+        // Position both snakes to collide on the food at (5, 5)
+        game.board.snakes[0].head = Position::new(5, 4);
+        game.board.snakes[0].body = VecDeque::from([
+            Position::new(5, 4),
+            Position::new(5, 3),
+            Position::new(5, 2),
+        ]);
+
+        game.board.snakes[1].head = Position::new(5, 6);
+        game.board.snakes[1].body = VecDeque::from([
+            Position::new(5, 6),
+            Position::new(5, 7),
+            Position::new(5, 8),
+        ]);
+
+        game.board.food = vec![Position::new(5, 5)];
+
+        // Both snakes move toward the food
+        let moves = vec![
+            ("snake-0".to_string(), Move::Up),
+            ("snake-1".to_string(), Move::Down),
+        ];
+
+        // This should not panic - both snakes try to eat the same food
+        let game = apply_turn(game, &moves);
+
+        // Food should be consumed
+        assert!(game.board.food.is_empty(), "Food should be consumed");
+
+        // Both snakes should be eliminated (same size head-to-head)
+        assert_eq!(
+            game.board.snakes[0].health, 0,
+            "Snake 0 should be eliminated in head-to-head"
+        );
+        assert_eq!(
+            game.board.snakes[1].health, 0,
+            "Snake 1 should be eliminated in head-to-head"
+        );
     }
 
     fn create_test_game(num_snakes: usize) -> Game {
