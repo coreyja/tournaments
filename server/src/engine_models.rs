@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 use chrono::{DateTime, Utc};
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
 
 /// Deserialize a value that could be either a string or an integer into an Option<String>.
 /// Older games stored Latency as an integer, newer ones as a string.
@@ -160,7 +160,11 @@ pub struct EngineSnake {
     pub head_type: Option<String>,
     #[serde(rename = "TailType")]
     pub tail_type: Option<String>,
-    #[serde(rename = "Latency", default, deserialize_with = "deserialize_string_or_int")]
+    #[serde(
+        rename = "Latency",
+        default,
+        deserialize_with = "deserialize_string_or_int"
+    )]
     pub latency: Option<String>,
     #[serde(rename = "Shout")]
     pub shout: Option<String>,
