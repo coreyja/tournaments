@@ -3,9 +3,71 @@
 //! The Engine stores games and frames as JSONB with PascalCase field names (from protobuf).
 
 use std::collections::HashMap;
+use std::fmt;
 
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
+
+/// Deserialize a value that could be either a string or an integer into an Option<String>.
+/// Older games stored Latency as an integer, newer ones as a string.
+fn deserialize_string_or_int<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct StringOrInt;
+
+    impl<'de> de::Visitor<'de> for StringOrInt {
+        type Value = Option<String>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a string, integer, or null")
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(Some(value.to_string()))
+        }
+
+        fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(Some(value))
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(Some(value.to_string()))
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(Some(value.to_string()))
+        }
+    }
+
+    deserializer.deserialize_any(StringOrInt)
+}
 
 /// Game metadata from the Engine's `games` table `value` column.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -98,7 +160,11 @@ pub struct EngineSnake {
     pub head_type: Option<String>,
     #[serde(rename = "TailType")]
     pub tail_type: Option<String>,
-    #[serde(rename = "Latency")]
+    #[serde(
+        rename = "Latency",
+        default,
+        deserialize_with = "deserialize_string_or_int"
+    )]
     pub latency: Option<String>,
     #[serde(rename = "Shout")]
     pub shout: Option<String>,
