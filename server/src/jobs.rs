@@ -27,7 +27,7 @@ impl Job<AppState> for GameRunnerJob {
 
     async fn run(&self, app_state: AppState) -> cja::Result<()> {
         // Run the game with turn-by-turn persistence and WebSocket notifications
-        crate::models::game::run_game_with_persistence(
+        crate::models::game::run_game(
             &app_state.db,
             &app_state.game_channels,
             self.game_id,

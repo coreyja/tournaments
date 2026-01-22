@@ -7,6 +7,20 @@ use battlesnake_game_types::wire_representation::{Game, Position};
 use serde::Serialize;
 use std::collections::VecDeque;
 
+/// Information about a snake's death
+#[derive(Debug, Clone)]
+pub struct DeathInfo {
+    /// The snake's ID
+    pub snake_id: String,
+    /// The turn on which the snake died
+    pub turn: i32,
+    /// The cause of death (e.g., "wall-collision", "head-collision")
+    pub cause: String,
+    /// The ID of the snake that eliminated this snake (if applicable)
+    /// TODO: Pass eliminated_by from the game engine once head-to-head collision tracking is implemented
+    pub eliminated_by: String,
+}
+
 /// Convert a VecDeque of Positions to a Vec of FrameCoords
 fn body_to_coords(body: &VecDeque<Position>) -> Vec<FrameCoord> {
     body.iter().map(|p| FrameCoord { x: p.x, y: p.y }).collect()
@@ -68,7 +82,7 @@ impl From<Position> for FrameCoord {
 }
 
 /// Convert a Game state to a frame for the board viewer
-pub fn game_to_frame(game: &Game, death_info: &[(String, i32, String)]) -> EngineGameFrame {
+pub fn game_to_frame(game: &Game, death_info: &[DeathInfo]) -> EngineGameFrame {
     EngineGameFrame {
         turn: game.turn,
         snakes: game
@@ -76,21 +90,20 @@ pub fn game_to_frame(game: &Game, death_info: &[(String, i32, String)]) -> Engin
             .snakes
             .iter()
             .map(|s| {
-                let death =
-                    death_info
-                        .iter()
-                        .find(|(id, _, _)| id == &s.id)
-                        .map(|(_, turn, cause)| FrameDeath {
-                            cause: cause.clone(),
-                            turn: *turn,
-                            eliminated_by: "".to_string(),
-                        });
+                let death = death_info
+                    .iter()
+                    .find(|d| d.snake_id == s.id)
+                    .map(|d| FrameDeath {
+                        cause: d.cause.clone(),
+                        turn: d.turn,
+                        eliminated_by: d.eliminated_by.clone(),
+                    });
 
                 let (eliminated_cause, eliminated_by) = if s.health <= 0 {
                     death_info
                         .iter()
-                        .find(|(id, _, _)| id == &s.id)
-                        .map(|(_, _, cause)| (cause.clone(), "".to_string()))
+                        .find(|d| d.snake_id == s.id)
+                        .map(|d| (d.cause.clone(), d.eliminated_by.clone()))
                         .unwrap_or_default()
                 } else {
                     Default::default()

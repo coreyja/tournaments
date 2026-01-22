@@ -19,7 +19,7 @@ use crate::models::game_battlesnake::GameBattlesnakeWithDetails;
 
 const SNAKE_MAX_HEALTH: i32 = 100;
 const SNAKE_START_SIZE: usize = 3;
-const MAX_TURNS: i32 = 500;
+pub const MAX_TURNS: i32 = 500;
 
 /// Result of running a game
 #[derive(Debug)]
@@ -259,7 +259,7 @@ fn is_game_over(game: &Game) -> bool {
 }
 
 /// Apply a single turn: move snakes, reduce health, feed, eliminate
-fn apply_turn(mut game: Game, moves: &[(String, Move)]) -> Game {
+pub fn apply_turn(mut game: Game, moves: &[(String, Move)]) -> Game {
     // 1. Move snakes
     for snake in &mut game.board.snakes {
         if snake.health <= 0 {

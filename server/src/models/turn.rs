@@ -1,10 +1,12 @@
 use color_eyre::eyre::Context as _;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
+use crate::game_channels::{GameChannels, TurnNotification};
+
 /// A turn in a game with its frame data
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct Turn {
     pub turn_id: Uuid,
     pub game_id: Uuid,
@@ -15,7 +17,7 @@ pub struct Turn {
 
 /// Get all turns for a game, ordered by turn number
 pub async fn get_turns_by_game_id(pool: &PgPool, game_id: Uuid) -> cja::Result<Vec<Turn>> {
-    let rows = sqlx::query!(
+    let turns = sqlx::query_as::<_, Turn>(
         r#"
         SELECT
             turn_id,
@@ -27,22 +29,11 @@ pub async fn get_turns_by_game_id(pool: &PgPool, game_id: Uuid) -> cja::Result<V
         WHERE game_id = $1
         ORDER BY turn_number ASC
         "#,
-        game_id
     )
+    .bind(game_id)
     .fetch_all(pool)
     .await
     .wrap_err("Failed to fetch turns from database")?;
-
-    let turns = rows
-        .into_iter()
-        .map(|row| Turn {
-            turn_id: row.turn_id,
-            game_id: row.game_id,
-            turn_number: row.turn_number,
-            frame_data: row.frame_data,
-            created_at: row.created_at,
-        })
-        .collect();
 
     Ok(turns)
 }
@@ -54,7 +45,7 @@ pub async fn get_turns_from(
     game_id: Uuid,
     from_turn: i32,
 ) -> cja::Result<Vec<Turn>> {
-    let rows = sqlx::query!(
+    let turns = sqlx::query_as::<_, Turn>(
         r#"
         SELECT
             turn_id,
@@ -66,23 +57,12 @@ pub async fn get_turns_from(
         WHERE game_id = $1 AND turn_number >= $2
         ORDER BY turn_number ASC
         "#,
-        game_id,
-        from_turn
     )
+    .bind(game_id)
+    .bind(from_turn)
     .fetch_all(pool)
     .await
     .wrap_err("Failed to fetch turns from database")?;
-
-    let turns = rows
-        .into_iter()
-        .map(|row| Turn {
-            turn_id: row.turn_id,
-            game_id: row.game_id,
-            turn_number: row.turn_number,
-            frame_data: row.frame_data,
-            created_at: row.created_at,
-        })
-        .collect();
 
     Ok(turns)
 }
@@ -94,27 +74,41 @@ pub async fn create_turn(
     turn_number: i32,
     frame_data: Option<serde_json::Value>,
 ) -> cja::Result<Turn> {
-    let row = sqlx::query!(
+    let turn = sqlx::query_as::<_, Turn>(
         r#"
         INSERT INTO turns (game_id, turn_number, frame_data)
         VALUES ($1, $2, $3)
         RETURNING turn_id, game_id, turn_number, frame_data, created_at
         "#,
-        game_id,
-        turn_number,
-        frame_data
     )
+    .bind(game_id)
+    .bind(turn_number)
+    .bind(frame_data)
     .fetch_one(pool)
     .await
     .wrap_err("Failed to create turn")?;
 
-    Ok(Turn {
-        turn_id: row.turn_id,
-        game_id: row.game_id,
-        turn_number: row.turn_number,
-        frame_data: row.frame_data,
-        created_at: row.created_at,
-    })
+    Ok(turn)
+}
+
+/// Create a new turn for a game and notify WebSocket subscribers
+pub async fn create_turn_and_notify(
+    pool: &PgPool,
+    game_channels: &GameChannels,
+    game_id: Uuid,
+    turn_number: i32,
+    frame_data: Option<serde_json::Value>,
+) -> cja::Result<Turn> {
+    let turn = create_turn(pool, game_id, turn_number, frame_data).await?;
+
+    game_channels
+        .notify(TurnNotification {
+            game_id,
+            turn_number,
+        })
+        .await;
+
+    Ok(turn)
 }
 
 /// Update turn frame data (used after computing game state)
