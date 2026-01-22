@@ -128,4 +128,145 @@ mod tests {
         // Channel should be removed
         assert!(!channels.channels.read().await.contains_key(&game_id));
     }
+
+    #[tokio::test]
+    async fn test_multiple_turn_notifications() {
+        let channels = GameChannels::new();
+        let game_id = Uuid::new_v4();
+
+        let mut receiver = channels.subscribe(game_id).await;
+
+        // Send multiple turn notifications (simulating game progression)
+        for turn in 0..10 {
+            channels
+                .notify(TurnNotification {
+                    game_id,
+                    turn_number: turn,
+                })
+                .await;
+        }
+
+        // Verify all turns are received in order
+        for expected_turn in 0..10 {
+            let notification = receiver.recv().await.unwrap();
+            assert_eq!(notification.turn_number, expected_turn);
+            assert_eq!(notification.game_id, game_id);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_multiple_games_isolated() {
+        let channels = GameChannels::new();
+        let game_1 = Uuid::new_v4();
+        let game_2 = Uuid::new_v4();
+
+        let mut receiver_1 = channels.subscribe(game_1).await;
+        let mut receiver_2 = channels.subscribe(game_2).await;
+
+        // Notify different games
+        channels
+            .notify(TurnNotification {
+                game_id: game_1,
+                turn_number: 1,
+            })
+            .await;
+        channels
+            .notify(TurnNotification {
+                game_id: game_2,
+                turn_number: 100,
+            })
+            .await;
+
+        // Each receiver only gets its game's notifications
+        let notif_1 = receiver_1.recv().await.unwrap();
+        assert_eq!(notif_1.game_id, game_1);
+        assert_eq!(notif_1.turn_number, 1);
+
+        let notif_2 = receiver_2.recv().await.unwrap();
+        assert_eq!(notif_2.game_id, game_2);
+        assert_eq!(notif_2.turn_number, 100);
+    }
+
+    #[tokio::test]
+    async fn test_notify_without_subscribers() {
+        let channels = GameChannels::new();
+        let game_id = Uuid::new_v4();
+
+        // Should not panic when notifying with no subscribers
+        channels
+            .notify(TurnNotification {
+                game_id,
+                turn_number: 5,
+            })
+            .await;
+    }
+
+    #[tokio::test]
+    async fn test_multiple_subscribers_same_game() {
+        let channels = GameChannels::new();
+        let game_id = Uuid::new_v4();
+
+        let mut receiver_1 = channels.subscribe(game_id).await;
+        let mut receiver_2 = channels.subscribe(game_id).await;
+
+        channels
+            .notify(TurnNotification {
+                game_id,
+                turn_number: 42,
+            })
+            .await;
+
+        // Both subscribers should receive the notification
+        let notif_1 = receiver_1.recv().await.unwrap();
+        let notif_2 = receiver_2.recv().await.unwrap();
+
+        assert_eq!(notif_1.turn_number, 42);
+        assert_eq!(notif_2.turn_number, 42);
+    }
+
+    #[tokio::test]
+    async fn test_remove_channel() {
+        let channels = GameChannels::new();
+        let game_id = Uuid::new_v4();
+
+        let _receiver = channels.subscribe(game_id).await;
+        assert!(channels.channels.read().await.contains_key(&game_id));
+
+        channels.remove(game_id).await;
+        assert!(!channels.channels.read().await.contains_key(&game_id));
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_preserves_active_channels() {
+        let channels = GameChannels::new();
+        let game_id = Uuid::new_v4();
+
+        // Keep the receiver alive
+        let _receiver = channels.subscribe(game_id).await;
+
+        // Cleanup should NOT remove the channel since there's an active subscriber
+        channels.cleanup(game_id).await;
+
+        // Channel should still exist
+        assert!(channels.channels.read().await.contains_key(&game_id));
+    }
+
+    #[test]
+    fn test_turn_notification_clone() {
+        let notification = TurnNotification {
+            game_id: Uuid::new_v4(),
+            turn_number: 10,
+        };
+
+        let cloned = notification.clone();
+        assert_eq!(notification.game_id, cloned.game_id);
+        assert_eq!(notification.turn_number, cloned.turn_number);
+    }
+
+    #[test]
+    fn test_game_channels_default() {
+        let channels = GameChannels::default();
+        // Should be equivalent to new()
+        assert!(channels.channels.try_read().is_ok());
+    }
 }

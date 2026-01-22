@@ -208,3 +208,91 @@ pub async fn get_snake_turns_by_turn_id(
 
     Ok(turns)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_turn_struct_serialization() {
+        let turn = Turn {
+            turn_id: Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap(),
+            game_id: Uuid::parse_str("550e8400-e29b-41d4-a716-446655440001").unwrap(),
+            turn_number: 42,
+            frame_data: Some(serde_json::json!({"test": "data"})),
+            created_at: chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&chrono::Utc),
+        };
+
+        let json = serde_json::to_string(&turn).unwrap();
+        assert!(json.contains("\"turn_id\":"));
+        assert!(json.contains("\"game_id\":"));
+        assert!(json.contains("\"turn_number\":42"));
+        assert!(json.contains("\"frame_data\":{\"test\":\"data\"}"));
+    }
+
+    #[test]
+    fn test_turn_struct_deserialization() {
+        let json = r#"{
+            "turn_id": "550e8400-e29b-41d4-a716-446655440000",
+            "game_id": "550e8400-e29b-41d4-a716-446655440001",
+            "turn_number": 10,
+            "frame_data": null,
+            "created_at": "2024-01-01T00:00:00Z"
+        }"#;
+
+        let turn: Turn = serde_json::from_str(json).unwrap();
+        assert_eq!(turn.turn_number, 10);
+        assert!(turn.frame_data.is_none());
+    }
+
+    #[test]
+    fn test_turn_with_frame_data() {
+        let frame_data = serde_json::json!({
+            "Turn": 5,
+            "Snakes": [{"ID": "snake-1", "Health": 100}],
+            "Food": [{"X": 5, "Y": 5}],
+            "Hazards": []
+        });
+
+        let turn = Turn {
+            turn_id: Uuid::new_v4(),
+            game_id: Uuid::new_v4(),
+            turn_number: 5,
+            frame_data: Some(frame_data.clone()),
+            created_at: chrono::Utc::now(),
+        };
+
+        assert_eq!(turn.frame_data.as_ref().unwrap()["Turn"], 5);
+        assert!(turn.frame_data.as_ref().unwrap()["Snakes"].is_array());
+    }
+
+    #[test]
+    fn test_snake_turn_struct_serialization() {
+        let snake_turn = SnakeTurn {
+            snake_turn_id: Uuid::new_v4(),
+            turn_id: Uuid::new_v4(),
+            game_battlesnake_id: Uuid::new_v4(),
+            direction: "up".to_string(),
+            created_at: chrono::Utc::now(),
+        };
+
+        let json = serde_json::to_string(&snake_turn).unwrap();
+        assert!(json.contains("\"direction\":\"up\""));
+    }
+
+    #[test]
+    fn test_snake_turn_directions() {
+        for direction in ["up", "down", "left", "right"] {
+            let snake_turn = SnakeTurn {
+                snake_turn_id: Uuid::new_v4(),
+                turn_id: Uuid::new_v4(),
+                game_battlesnake_id: Uuid::new_v4(),
+                direction: direction.to_string(),
+                created_at: chrono::Utc::now(),
+            };
+            assert_eq!(snake_turn.direction, direction);
+        }
+    }
+}

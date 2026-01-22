@@ -169,6 +169,9 @@ fn generate_snake_color(id: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use battlesnake_game_types::wire_representation::{
+        BattleSnake, Board, Game, NestedGame, Ruleset,
+    };
 
     #[test]
     fn test_frame_coord_serialization() {
@@ -192,5 +195,242 @@ mod tests {
         // Should be a valid hex color
         assert!(color1.starts_with('#'));
         assert_eq!(color1.len(), 7);
+    }
+
+    #[test]
+    fn test_death_info_struct() {
+        let death = DeathInfo {
+            snake_id: "snake-1".to_string(),
+            turn: 42,
+            cause: "wall-collision".to_string(),
+            eliminated_by: "snake-2".to_string(),
+        };
+
+        assert_eq!(death.snake_id, "snake-1");
+        assert_eq!(death.turn, 42);
+        assert_eq!(death.cause, "wall-collision");
+        assert_eq!(death.eliminated_by, "snake-2");
+    }
+
+    #[test]
+    fn test_death_info_clone() {
+        let death = DeathInfo {
+            snake_id: "snake-1".to_string(),
+            turn: 10,
+            cause: "head-collision".to_string(),
+            eliminated_by: "snake-2".to_string(),
+        };
+
+        let cloned = death.clone();
+        assert_eq!(death.snake_id, cloned.snake_id);
+        assert_eq!(death.turn, cloned.turn);
+        assert_eq!(death.cause, cloned.cause);
+        assert_eq!(death.eliminated_by, cloned.eliminated_by);
+    }
+
+    #[test]
+    fn test_game_to_frame_basic() {
+        let game = create_test_game();
+        let death_info: Vec<DeathInfo> = vec![];
+
+        let frame = game_to_frame(&game, &death_info);
+
+        assert_eq!(frame.turn, 0);
+        assert_eq!(frame.snakes.len(), 1);
+        assert_eq!(frame.snakes[0].id, "snake-1");
+        assert_eq!(frame.snakes[0].name, "Test Snake");
+        assert_eq!(frame.snakes[0].health, 100);
+        assert!(frame.snakes[0].death.is_none());
+        assert_eq!(frame.snakes[0].eliminated_cause, "");
+        assert_eq!(frame.snakes[0].eliminated_by, "");
+    }
+
+    #[test]
+    fn test_game_to_frame_with_death_info() {
+        let mut game = create_test_game();
+        game.board.snakes[0].health = 0; // Snake is dead
+
+        let death_info = vec![DeathInfo {
+            snake_id: "snake-1".to_string(),
+            turn: 5,
+            cause: "wall-collision".to_string(),
+            eliminated_by: "".to_string(),
+        }];
+
+        let frame = game_to_frame(&game, &death_info);
+
+        assert_eq!(frame.snakes.len(), 1);
+        assert!(frame.snakes[0].death.is_some());
+        let death = frame.snakes[0].death.as_ref().unwrap();
+        assert_eq!(death.cause, "wall-collision");
+        assert_eq!(death.turn, 5);
+        assert_eq!(frame.snakes[0].eliminated_cause, "wall-collision");
+    }
+
+    #[test]
+    fn test_game_to_frame_with_eliminated_by() {
+        let mut game = create_test_game();
+        game.board.snakes[0].health = 0;
+
+        let death_info = vec![DeathInfo {
+            snake_id: "snake-1".to_string(),
+            turn: 10,
+            cause: "head-collision".to_string(),
+            eliminated_by: "snake-2".to_string(),
+        }];
+
+        let frame = game_to_frame(&game, &death_info);
+
+        let death = frame.snakes[0].death.as_ref().unwrap();
+        assert_eq!(death.eliminated_by, "snake-2");
+        assert_eq!(frame.snakes[0].eliminated_by, "snake-2");
+    }
+
+    #[test]
+    fn test_game_to_frame_multiple_snakes() {
+        let mut game = create_test_game();
+        // Add a second snake
+        game.board.snakes.push(BattleSnake {
+            id: "snake-2".to_string(),
+            name: "Second Snake".to_string(),
+            head: Position::new(3, 3),
+            body: VecDeque::from([Position::new(3, 3), Position::new(3, 2), Position::new(3, 1)]),
+            health: 80,
+            shout: None,
+            actual_length: None,
+        });
+
+        let death_info: Vec<DeathInfo> = vec![];
+        let frame = game_to_frame(&game, &death_info);
+
+        assert_eq!(frame.snakes.len(), 2);
+        assert_eq!(frame.snakes[0].id, "snake-1");
+        assert_eq!(frame.snakes[1].id, "snake-2");
+        assert_eq!(frame.snakes[1].health, 80);
+    }
+
+    #[test]
+    fn test_game_to_frame_with_food() {
+        let mut game = create_test_game();
+        game.board.food = vec![Position::new(5, 5), Position::new(7, 7)];
+
+        let frame = game_to_frame(&game, &[]);
+
+        assert_eq!(frame.food.len(), 2);
+        assert_eq!(frame.food[0].x, 5);
+        assert_eq!(frame.food[0].y, 5);
+        assert_eq!(frame.food[1].x, 7);
+        assert_eq!(frame.food[1].y, 7);
+    }
+
+    #[test]
+    fn test_game_to_frame_with_hazards() {
+        let mut game = create_test_game();
+        game.board.hazards = vec![Position::new(0, 0), Position::new(10, 10)];
+
+        let frame = game_to_frame(&game, &[]);
+
+        assert_eq!(frame.hazards.len(), 2);
+        assert_eq!(frame.hazards[0].x, 0);
+        assert_eq!(frame.hazards[0].y, 0);
+    }
+
+    #[test]
+    fn test_game_to_frame_snake_body_coords() {
+        let game = create_test_game();
+        let frame = game_to_frame(&game, &[]);
+
+        // Snake body should be converted to FrameCoords
+        assert_eq!(frame.snakes[0].body.len(), 3);
+        assert_eq!(frame.snakes[0].body[0].x, 5);
+        assert_eq!(frame.snakes[0].body[0].y, 5);
+    }
+
+    #[test]
+    fn test_game_to_frame_alive_snake_no_death() {
+        let game = create_test_game();
+        // Even if there's death_info for this snake, if health > 0, no eliminated fields
+        let death_info = vec![DeathInfo {
+            snake_id: "snake-1".to_string(),
+            turn: 5,
+            cause: "test".to_string(),
+            eliminated_by: "".to_string(),
+        }];
+
+        let frame = game_to_frame(&game, &death_info);
+
+        // Death info is still attached (for replay purposes)
+        assert!(frame.snakes[0].death.is_some());
+        // But eliminated_cause/eliminated_by are empty since snake is alive
+        assert_eq!(frame.snakes[0].eliminated_cause, "");
+        assert_eq!(frame.snakes[0].eliminated_by, "");
+    }
+
+    #[test]
+    fn test_frame_snake_serialization() {
+        let game = create_test_game();
+        let frame = game_to_frame(&game, &[]);
+
+        let json = serde_json::to_string(&frame).unwrap();
+
+        // Check PascalCase serialization
+        assert!(json.contains("\"Turn\":"));
+        assert!(json.contains("\"Snakes\":"));
+        assert!(json.contains("\"Food\":"));
+        assert!(json.contains("\"Hazards\":"));
+        assert!(json.contains("\"ID\":"));
+        assert!(json.contains("\"Name\":"));
+        assert!(json.contains("\"Body\":"));
+        assert!(json.contains("\"Health\":"));
+    }
+
+    #[test]
+    fn test_frame_death_serialization() {
+        let death = FrameDeath {
+            cause: "wall-collision".to_string(),
+            turn: 42,
+            eliminated_by: "snake-2".to_string(),
+        };
+
+        let json = serde_json::to_string(&death).unwrap();
+
+        assert!(json.contains("\"Cause\":\"wall-collision\""));
+        assert!(json.contains("\"Turn\":42"));
+        assert!(json.contains("\"EliminatedBy\":\"snake-2\""));
+    }
+
+    fn create_test_game() -> Game {
+        let snake = BattleSnake {
+            id: "snake-1".to_string(),
+            name: "Test Snake".to_string(),
+            head: Position::new(5, 5),
+            body: VecDeque::from([Position::new(5, 5), Position::new(5, 4), Position::new(5, 3)]),
+            health: 100,
+            shout: Some("Hello!".to_string()),
+            actual_length: None,
+        };
+
+        Game {
+            you: snake.clone(),
+            board: Board {
+                height: 11,
+                width: 11,
+                food: vec![],
+                snakes: vec![snake],
+                hazards: vec![],
+            },
+            turn: 0,
+            game: NestedGame {
+                id: "test-game".to_string(),
+                ruleset: Ruleset {
+                    name: "standard".to_string(),
+                    version: "v1.0.0".to_string(),
+                    settings: None,
+                },
+                timeout: 500,
+                map: None,
+                source: None,
+            },
+        }
     }
 }
