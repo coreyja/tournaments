@@ -170,7 +170,11 @@ pub struct EngineSnake {
     pub shout: Option<String>,
     #[serde(rename = "Squad")]
     pub squad: Option<String>,
-    #[serde(rename = "APIVersion")]
+    #[serde(
+        rename = "APIVersion",
+        default,
+        deserialize_with = "deserialize_string_or_int"
+    )]
     pub api_version: Option<String>,
     #[serde(rename = "Author")]
     pub author: Option<String>,
