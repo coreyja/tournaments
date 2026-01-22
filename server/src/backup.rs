@@ -230,11 +230,10 @@ const BACKUP_WINDOW_HOURS: i64 = 4;
 /// Finds completed games from the Engine database and enqueues individual
 /// backup jobs for each game that hasn't been archived yet.
 pub async fn run_backup_discovery(app_state: &AppState) -> Result<(), BackupError> {
-    run_backup_discovery_inner(app_state).await.map_err(Into::into)
-}
-
-async fn run_backup_discovery_inner(app_state: &AppState) -> cja::Result<()> {
-    tracing::info!(window_hours = BACKUP_WINDOW_HOURS, "Starting backup discovery");
+    tracing::info!(
+        window_hours = BACKUP_WINDOW_HOURS,
+        "Starting backup discovery"
+    );
 
     let engine_db = match &app_state.engine_db {
         Some(db) => db,
@@ -295,16 +294,6 @@ pub async fn backup_single_game(
     engine_game_id: &str,
     batch_id: Option<i32>,
 ) -> Result<(), BackupError> {
-    backup_single_game_inner(app_state, engine_game_id, batch_id)
-        .await
-        .map_err(Into::into)
-}
-
-async fn backup_single_game_inner(
-    app_state: &AppState,
-    engine_game_id: &str,
-    batch_id: Option<i32>,
-) -> cja::Result<()> {
     // Check if already archived (idempotency)
     if is_already_archived(&app_state.db, engine_game_id).await? {
         tracing::debug!(game_id = %engine_game_id, "Game already archived, skipping");
@@ -314,14 +303,14 @@ async fn backup_single_game_inner(
     let engine_db = match &app_state.engine_db {
         Some(db) => db,
         None => {
-            return Err(eyre!("Engine database not configured"));
+            return Err(eyre!("Engine database not configured").into());
         }
     };
 
     let bucket = match &app_state.gcs_bucket {
         Some(b) => b.clone(),
         None => {
-            return Err(eyre!("GCS bucket not configured"));
+            return Err(eyre!("GCS bucket not configured").into());
         }
     };
 
@@ -378,12 +367,6 @@ async fn backup_single_game_inner(
 /// already an incomplete batch in progress. If so, it does nothing.
 /// Otherwise, it enqueues the first HistoricalBackupDiscoveryJob.
 pub async fn start_historical_backfill(app_state: &AppState) -> Result<(), BackupError> {
-    start_historical_backfill_inner(app_state)
-        .await
-        .map_err(Into::into)
-}
-
-async fn start_historical_backfill_inner(app_state: &AppState) -> cja::Result<()> {
     // Check if there's already an incomplete batch
     let incomplete_batch = sqlx::query_scalar!(
         r#"
@@ -486,10 +469,7 @@ async fn handle_batch_completion(app_state: &AppState, batch_id: i32) -> cja::Re
             after_created: result.next_cursor_created,
             after_id: result.next_cursor_id,
         }
-        .enqueue(
-            app_state.clone(),
-            "historical backup discovery".to_string(),
-        )
+        .enqueue(app_state.clone(), "historical backup discovery".to_string())
         .await
         .wrap_err("Failed to enqueue next historical discovery job")?;
     }
@@ -546,7 +526,10 @@ async fn fetch_oldest_completed_games(
 }
 
 /// Batch check which game IDs are already archived in our database.
-async fn get_archived_game_ids(db: &PgPool, engine_game_ids: &[String]) -> cja::Result<Vec<String>> {
+async fn get_archived_game_ids(
+    db: &PgPool,
+    engine_game_ids: &[String],
+) -> cja::Result<Vec<String>> {
     let ids: Vec<String> = sqlx::query_scalar!(
         r#"
         SELECT engine_game_id as "engine_game_id!"
@@ -571,16 +554,6 @@ pub async fn run_historical_backup_discovery(
     after_created: Option<chrono::NaiveDateTime>,
     after_id: Option<&str>,
 ) -> Result<(), BackupError> {
-    run_historical_backup_discovery_inner(app_state, after_created, after_id)
-        .await
-        .map_err(Into::into)
-}
-
-async fn run_historical_backup_discovery_inner(
-    app_state: &AppState,
-    after_created: Option<chrono::NaiveDateTime>,
-    after_id: Option<&str>,
-) -> cja::Result<()> {
     tracing::info!(
         after_created = ?after_created,
         after_id = ?after_id,
@@ -596,7 +569,9 @@ async fn run_historical_backup_discovery_inner(
     };
 
     // Fetch batch of oldest games
-    let games = fetch_oldest_completed_games(engine_db, after_created, after_id, HISTORICAL_BATCH_SIZE).await?;
+    let games =
+        fetch_oldest_completed_games(engine_db, after_created, after_id, HISTORICAL_BATCH_SIZE)
+            .await?;
 
     if games.is_empty() {
         tracing::info!("No more games to archive, historical backfill complete!");
@@ -628,10 +603,7 @@ async fn run_historical_backup_discovery_inner(
             after_created: Some(last.created),
             after_id: Some(last.id.clone()),
         }
-        .enqueue(
-            app_state.clone(),
-            "historical backup discovery".to_string(),
-        )
+        .enqueue(app_state.clone(), "historical backup discovery".to_string())
         .await
         .wrap_err("Failed to enqueue next historical discovery job")?;
         return Ok(());
@@ -670,18 +642,12 @@ async fn run_historical_backup_discovery_inner(
             engine_game_id: game.id.clone(),
             batch_id: Some(batch_id),
         }
-        .enqueue(
-            app_state.clone(),
-            format!("backup game {}", game.id),
-        )
+        .enqueue(app_state.clone(), format!("backup game {}", game.id))
         .await
         .wrap_err_with(|| format!("Failed to enqueue backup job for game {}", game.id))?;
     }
 
-    tracing::info!(
-        batch_id = batch_id,
-        "Enqueued all backup jobs for batch"
-    );
+    tracing::info!(batch_id = batch_id, "Enqueued all backup jobs for batch");
 
     Ok(())
 }

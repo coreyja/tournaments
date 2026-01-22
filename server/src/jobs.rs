@@ -42,9 +42,7 @@ impl Job<AppState> for GameBackupJob {
     const NAME: &'static str = "GameBackupJob";
 
     async fn run(&self, app_state: AppState) -> cja::Result<()> {
-        crate::backup::run_backup_discovery(&app_state)
-            .await
-            .map_err(|e| color_eyre::eyre::eyre!("{}", e))?;
+        crate::backup::run_backup_discovery(&app_state).await?;
         Ok(())
     }
 }
@@ -65,9 +63,7 @@ impl Job<AppState> for BackupSingleGameJob {
     const NAME: &'static str = "BackupSingleGameJob";
 
     async fn run(&self, app_state: AppState) -> cja::Result<()> {
-        crate::backup::backup_single_game(&app_state, &self.engine_game_id, self.batch_id)
-            .await
-            .map_err(|e| color_eyre::eyre::eyre!("{}", e))?;
+        crate::backup::backup_single_game(&app_state, &self.engine_game_id, self.batch_id).await?;
         Ok(())
     }
 }
@@ -92,10 +88,16 @@ impl Job<AppState> for HistoricalBackupDiscoveryJob {
             self.after_created,
             self.after_id.as_deref(),
         )
-        .await
-        .map_err(|e| color_eyre::eyre::eyre!("{}", e))?;
+        .await?;
         Ok(())
     }
 }
 
-cja::impl_job_registry!(AppState, NoopJob, GameRunnerJob, GameBackupJob, BackupSingleGameJob, HistoricalBackupDiscoveryJob);
+cja::impl_job_registry!(
+    AppState,
+    NoopJob,
+    GameRunnerJob,
+    GameBackupJob,
+    BackupSingleGameJob,
+    HistoricalBackupDiscoveryJob
+);
