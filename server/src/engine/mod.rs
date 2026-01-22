@@ -3,6 +3,8 @@
 //! This module provides game simulation using the official Battlesnake rules.
 //! It uses the wire representation types directly for simplicity.
 
+pub mod frame;
+
 use battlesnake_game_types::types::{Move, RandomReasonableMovesGame};
 use battlesnake_game_types::wire_representation::{
     BattleSnake, Board, Game, NestedGame, Position, Ruleset, Settings,
@@ -307,7 +309,9 @@ fn apply_turn(mut game: Game, moves: &[(String, Move)]) -> Game {
     }
 
     // Remove eaten food (in reverse order to preserve indices)
+    // Deduplicate first in case two snakes eat the same food (head-to-head at food)
     eaten_food.sort();
+    eaten_food.dedup();
     eaten_food.reverse();
     for idx in eaten_food {
         game.board.food.remove(idx);

@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO snake_turns (turn_id, game_battlesnake_id, direction)\n        VALUES ($1, $2, $3)\n        RETURNING snake_turn_id, turn_id, game_battlesnake_id, direction, created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "snake_turn_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "turn_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "game_battlesnake_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "direction",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "59282b1c37a78332afb3cba6303d6c382e7c7b5194e84439d550df0cda512b6f"
+}
