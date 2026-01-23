@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 
 use cja::{
+    jobs::worker::DEFAULT_LOCK_TIMEOUT,
     server::run_server,
     setup::{setup_sentry, setup_tracing},
 };
 use color_eyre::eyre::eyre;
 use state::AppState;
+use tokio_util::sync::CancellationToken;
 use tracing::info;
 
 mod backup;
@@ -140,6 +142,8 @@ async fn spawn_application_tasks(app_state: AppState) -> cja::Result<Vec<NamedTa
                 jobs::Jobs,
                 std::time::Duration::from_secs(job_poll_interval_secs),
                 20,
+                CancellationToken::new(),
+                DEFAULT_LOCK_TIMEOUT,
             ),
         ));
     } else {
