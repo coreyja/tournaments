@@ -67,6 +67,7 @@ zstd = "0.13"
 thiserror = "1"
 
 battlesnake-game-types = { git = "https://github.com/fables-tales/battlesnake-game-types", branch = "main" }
+tokio-util = { version = "0.7.14", features = ["rt"] }
 
 [build-dependencies]
 vergen = { version = "8.3.1", features = [
