@@ -16,6 +16,7 @@ mod engine;
 mod engine_models;
 mod errors;
 mod flasher;
+mod game_channels;
 mod github;
 mod jobs;
 mod models;
