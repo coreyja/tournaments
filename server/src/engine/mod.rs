@@ -19,7 +19,7 @@ use crate::models::game_battlesnake::GameBattlesnakeWithDetails;
 
 const SNAKE_MAX_HEALTH: i32 = 100;
 const SNAKE_START_SIZE: usize = 3;
-pub const MAX_TURNS: i32 = 500;
+pub const MAX_TURNS: i32 = 5000;
 
 /// Result of running a game
 #[derive(Debug)]
