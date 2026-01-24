@@ -1,6 +1,7 @@
 use color_eyre::eyre::{Context as _, eyre};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
+use crate::game_channels::GameChannels;
 use crate::github::auth::GitHubOAuthConfig;
 
 #[derive(Clone)]
@@ -12,6 +13,8 @@ pub struct AppState {
     pub engine_db: Option<sqlx::Pool<sqlx::Postgres>>,
     /// GCS bucket name for game backups
     pub gcs_bucket: Option<String>,
+    /// Broadcast channels for live game updates
+    pub game_channels: GameChannels,
 }
 
 impl AppState {
@@ -97,6 +100,7 @@ impl AppState {
             github_oauth_config,
             engine_db,
             gcs_bucket,
+            game_channels: GameChannels::new(),
         })
     }
 }
