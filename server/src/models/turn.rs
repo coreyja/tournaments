@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
+use crate::game_channels::{GameChannels, TurnNotification};
+
 /// A turn in a game with its frame data
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct Turn {
@@ -85,6 +87,26 @@ pub async fn create_turn(
     .fetch_one(pool)
     .await
     .wrap_err("Failed to create turn")?;
+
+    Ok(turn)
+}
+
+/// Create a new turn for a game and notify WebSocket subscribers
+pub async fn create_turn_and_notify(
+    pool: &PgPool,
+    game_channels: &GameChannels,
+    game_id: Uuid,
+    turn_number: i32,
+    frame_data: Option<serde_json::Value>,
+) -> cja::Result<Turn> {
+    let turn = create_turn(pool, game_id, turn_number, frame_data).await?;
+
+    game_channels
+        .notify(TurnNotification {
+            game_id,
+            turn_number,
+        })
+        .await;
 
     Ok(turn)
 }

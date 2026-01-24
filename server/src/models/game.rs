@@ -22,6 +22,15 @@ impl GameBoardSize {
             GameBoardSize::Large => "19x19",
         }
     }
+
+    /// Returns the (width, height) dimensions of the board
+    pub fn dimensions(&self) -> (u32, u32) {
+        match self {
+            GameBoardSize::Small => (7, 7),
+            GameBoardSize::Medium => (11, 11),
+            GameBoardSize::Large => (19, 19),
+        }
+    }
 }
 
 impl FromStr for GameBoardSize {
@@ -460,8 +469,21 @@ pub async fn update_game_status(
     })
 }
 
-// Run a game using the game engine
-pub async fn run_game(pool: &PgPool, game_id: Uuid) -> cja::Result<()> {
+use crate::game_channels::GameChannels;
+
+/// Run a game with turn-by-turn DB persistence and WebSocket notifications
+pub async fn run_game(
+    pool: &PgPool,
+    game_channels: &GameChannels,
+    game_id: Uuid,
+) -> cja::Result<()> {
+    use crate::engine::MAX_TURNS;
+    use crate::engine::frame::{DeathInfo, game_to_frame};
+    use battlesnake_game_types::types::{Move, RandomReasonableMovesGame};
+    use rand::SeedableRng;
+
+    tracing::info!(game_id = %game_id, "Starting run_game");
+
     // Get the game details
     let game = get_game_by_id(pool, game_id)
         .await?
@@ -479,24 +501,104 @@ pub async fn run_game(pool: &PgPool, game_id: Uuid) -> cja::Result<()> {
         return Err(cja::color_eyre::eyre::eyre!("No battlesnakes in the game"));
     }
 
-    // Create the initial game state and run the simulation
-    let initial_state =
+    // Create the initial game state
+    let mut engine_game =
         crate::engine::create_initial_game(game_id, game.board_size, game.game_type, &battlesnakes);
 
-    let result = crate::engine::run_game_with_random_moves(initial_state);
+    // Use StdRng seeded from game_id for reproducibility and Send safety
+    let mut rng = rand::rngs::StdRng::from_seed({
+        let mut seed = [0u8; 32];
+        seed[..16].copy_from_slice(game_id.as_bytes());
+        seed
+    });
+    let mut death_info: Vec<DeathInfo> = Vec::new();
+    let mut elimination_order: Vec<String> = Vec::new();
+
+    // Helper to check if game is over
+    let is_game_over = |g: &battlesnake_game_types::wire_representation::Game| {
+        g.board.snakes.iter().filter(|s| s.health > 0).count() <= 1
+    };
+
+    // Store turn 0 (initial state)
+    let frame_0 = game_to_frame(&engine_game, &death_info);
+    let frame_0_json =
+        serde_json::to_value(&frame_0).wrap_err("Failed to serialize initial frame")?;
+
+    tracing::info!(game_id = %game_id, "Storing turn 0");
+    crate::models::turn::create_turn_and_notify(
+        pool,
+        game_channels,
+        game_id,
+        0,
+        Some(frame_0_json),
+    )
+    .await?;
+    tracing::info!(game_id = %game_id, "Turn 0 stored successfully");
+
+    // Run the game turn by turn
+    while !is_game_over(&engine_game) && engine_game.turn < MAX_TURNS {
+        // Get random reasonable moves for each alive snake
+        let moves: Vec<(String, Move)> = engine_game
+            .random_reasonable_move_for_each_snake(&mut rng)
+            .collect();
+
+        // Apply the moves using the engine
+        engine_game = crate::engine::apply_turn(engine_game, &moves);
+        engine_game.turn += 1;
+
+        // Track newly eliminated snakes
+        for snake in &engine_game.board.snakes {
+            if snake.health <= 0 && !elimination_order.contains(&snake.id) {
+                elimination_order.push(snake.id.clone());
+                death_info.push(DeathInfo {
+                    snake_id: snake.id.clone(),
+                    turn: engine_game.turn,
+                    cause: "eliminated".to_string(),
+                    eliminated_by: String::new(),
+                });
+            }
+        }
+
+        // Store the turn frame and notify subscribers
+        let frame = game_to_frame(&engine_game, &death_info);
+        let frame_json = serde_json::to_value(&frame)
+            .wrap_err_with(|| format!("Failed to serialize frame {}", engine_game.turn))?;
+
+        tracing::debug!(game_id = %game_id, turn = engine_game.turn, "Storing turn");
+        crate::models::turn::create_turn_and_notify(
+            pool,
+            game_channels,
+            game_id,
+            engine_game.turn,
+            Some(frame_json),
+        )
+        .await?;
+    }
 
     tracing::info!(
         game_id = %game_id,
-        final_turn = result.final_turn,
-        "Game completed"
+        final_turn = engine_game.turn,
+        "Game completed with persistence"
     );
 
-    // Assign placements based on engine results
-    // placements[0] = winner (placement 1), placements[1] = 2nd place, etc.
-    for (i, snake_id) in result.placements.iter().enumerate() {
+    // Build placements: last eliminated = winner (placement 1)
+    // Snakes still alive at the end go first
+    let mut placements: Vec<String> = engine_game
+        .board
+        .snakes
+        .iter()
+        .filter(|s| s.health > 0)
+        .map(|s| s.id.clone())
+        .collect();
+
+    // Then add eliminated snakes in reverse order (last eliminated = better placement)
+    elimination_order.reverse();
+    placements.extend(elimination_order);
+
+    // Assign placements to database
+    for (i, snake_id) in placements.iter().enumerate() {
         let placement = (i + 1) as i32;
 
-        // Parse the snake_id back to UUID
         let battlesnake_id: Uuid = snake_id
             .parse()
             .wrap_err_with(|| format!("Invalid battlesnake ID: {}", snake_id))?;
@@ -518,6 +620,9 @@ pub async fn run_game(pool: &PgPool, game_id: Uuid) -> cja::Result<()> {
 
     // Update status to finished
     update_game_status(pool, game_id, GameStatus::Finished).await?;
+
+    // Clean up game channel (will be removed when no subscribers)
+    game_channels.cleanup(game_id).await;
 
     Ok(())
 }

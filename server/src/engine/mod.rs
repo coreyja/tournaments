@@ -19,7 +19,7 @@ use crate::models::game_battlesnake::GameBattlesnakeWithDetails;
 
 const SNAKE_MAX_HEALTH: i32 = 100;
 const SNAKE_START_SIZE: usize = 3;
-const MAX_TURNS: i32 = 500;
+pub const MAX_TURNS: i32 = 500;
 
 /// Result of running a game
 #[derive(Debug)]
@@ -259,7 +259,7 @@ fn is_game_over(game: &Game) -> bool {
 }
 
 /// Apply a single turn: move snakes, reduce health, feed, eliminate
-fn apply_turn(mut game: Game, moves: &[(String, Move)]) -> Game {
+pub fn apply_turn(mut game: Game, moves: &[(String, Move)]) -> Game {
     // 1. Move snakes
     for snake in &mut game.board.snakes {
         if snake.health <= 0 {
@@ -581,6 +581,263 @@ mod tests {
             game.board.snakes[1].health, 0,
             "Snake 1 should be eliminated in head-to-head"
         );
+    }
+
+    #[test]
+    fn test_self_collision_elimination() {
+        let mut game = create_test_game(1);
+        // Create a snake that will collide with itself
+        // Snake body forms an L shape, moving into its own body
+        game.board.snakes[0].head = Position::new(5, 5);
+        game.board.snakes[0].body = VecDeque::from([
+            Position::new(5, 5),
+            Position::new(5, 4),
+            Position::new(6, 4),
+            Position::new(6, 5),
+            Position::new(6, 6),
+        ]);
+
+        // Moving right will hit the body at (6, 5)
+        let moves = vec![("snake-0".to_string(), Move::Right)];
+        let game = apply_turn(game, &moves);
+
+        assert_eq!(game.board.snakes[0].health, 0);
+    }
+
+    #[test]
+    fn test_body_collision_with_other_snake() {
+        let mut game = create_test_game(2);
+        // Position snake-0 to collide with snake-1's body
+        game.board.snakes[0].head = Position::new(5, 5);
+        game.board.snakes[0].body = VecDeque::from([
+            Position::new(5, 5),
+            Position::new(5, 4),
+            Position::new(5, 3),
+        ]);
+
+        // Make snake-1 longer so (5,6) stays in body after it moves
+        game.board.snakes[1].head = Position::new(6, 6);
+        game.board.snakes[1].body = VecDeque::from([
+            Position::new(6, 6),
+            Position::new(5, 6),
+            Position::new(4, 6),
+            Position::new(3, 6),
+        ]);
+
+        // Snake-0 moves up into snake-1's body
+        // Snake-1 moves right, body becomes [(7,6), (6,6), (5,6), (4,6)]
+        let moves = vec![
+            ("snake-0".to_string(), Move::Up),
+            ("snake-1".to_string(), Move::Right),
+        ];
+        let game = apply_turn(game, &moves);
+
+        // Snake-0 should be eliminated (hit snake-1's body at (5,6))
+        assert_eq!(game.board.snakes[0].health, 0);
+        // Snake-1 should survive
+        assert!(game.board.snakes[1].health > 0);
+    }
+
+    #[test]
+    fn test_head_to_head_smaller_loses() {
+        let mut game = create_test_game(2);
+        game.board.snakes[0].head = Position::new(5, 5);
+        game.board.snakes[0].body = VecDeque::from([
+            Position::new(5, 5),
+            Position::new(5, 4),
+            Position::new(5, 3),
+        ]); // Length 3
+
+        game.board.snakes[1].head = Position::new(5, 7);
+        game.board.snakes[1].body = VecDeque::from([
+            Position::new(5, 7),
+            Position::new(5, 8),
+            Position::new(5, 9),
+            Position::new(5, 10),
+        ]); // Length 4
+
+        // Both move to (5, 6)
+        let moves = vec![
+            ("snake-0".to_string(), Move::Up),
+            ("snake-1".to_string(), Move::Down),
+        ];
+        let game = apply_turn(game, &moves);
+
+        // Smaller snake loses
+        assert_eq!(game.board.snakes[0].health, 0);
+        // Larger snake survives
+        assert!(game.board.snakes[1].health > 0);
+    }
+
+    #[test]
+    fn test_head_to_head_equal_size_both_die() {
+        let mut game = create_test_game(2);
+        game.board.snakes[0].head = Position::new(5, 5);
+        game.board.snakes[0].body = VecDeque::from([
+            Position::new(5, 5),
+            Position::new(5, 4),
+            Position::new(5, 3),
+        ]);
+
+        game.board.snakes[1].head = Position::new(5, 7);
+        game.board.snakes[1].body = VecDeque::from([
+            Position::new(5, 7),
+            Position::new(5, 8),
+            Position::new(5, 9),
+        ]);
+
+        // Both move to (5, 6)
+        let moves = vec![
+            ("snake-0".to_string(), Move::Up),
+            ("snake-1".to_string(), Move::Down),
+        ];
+        let game = apply_turn(game, &moves);
+
+        // Both snakes should die
+        assert_eq!(game.board.snakes[0].health, 0);
+        assert_eq!(game.board.snakes[1].health, 0);
+    }
+
+    #[test]
+    fn test_starvation_elimination() {
+        let mut game = create_test_game(1);
+        game.board.snakes[0].health = 1; // Will reach 0 after move
+
+        let moves = vec![("snake-0".to_string(), Move::Up)];
+        let game = apply_turn(game, &moves);
+
+        // Snake should starve (health becomes 0)
+        assert_eq!(game.board.snakes[0].health, 0);
+    }
+
+    #[test]
+    fn test_eating_restores_health() {
+        let mut game = create_test_game(1);
+        // Health needs to be > 1 so snake survives the health reduction step before eating
+        game.board.snakes[0].health = 2;
+        game.board.snakes[0].head = Position::new(5, 4);
+        game.board.snakes[0].body = VecDeque::from([
+            Position::new(5, 4),
+            Position::new(5, 3),
+            Position::new(5, 2),
+        ]);
+        game.board.food = vec![Position::new(5, 5)];
+
+        let moves = vec![("snake-0".to_string(), Move::Up)];
+        let game = apply_turn(game, &moves);
+
+        // Snake should eat and restore health to max
+        assert_eq!(game.board.snakes[0].health, SNAKE_MAX_HEALTH);
+        assert!(game.board.food.is_empty());
+    }
+
+    #[test]
+    fn test_starve_before_eating() {
+        // Snake with health=1 reaching food still starves
+        // because health is reduced before feeding check
+        let mut game = create_test_game(1);
+        game.board.snakes[0].health = 1;
+        game.board.snakes[0].head = Position::new(5, 4);
+        game.board.snakes[0].body = VecDeque::from([
+            Position::new(5, 4),
+            Position::new(5, 3),
+            Position::new(5, 2),
+        ]);
+        game.board.food = vec![Position::new(5, 5)];
+
+        let moves = vec![("snake-0".to_string(), Move::Up)];
+        let game = apply_turn(game, &moves);
+
+        // Snake starves before eating (health reduced 1->0 before food check)
+        assert_eq!(game.board.snakes[0].health, 0);
+        // Food was NOT eaten (snake was already dead)
+        assert_eq!(game.board.food.len(), 1);
+    }
+
+    #[test]
+    fn test_apply_turn_all_directions() {
+        // Test all four movement directions
+        for (direction, expected_head) in [
+            (Move::Up, Position::new(5, 6)),
+            (Move::Down, Position::new(5, 4)),
+            (Move::Left, Position::new(4, 5)),
+            (Move::Right, Position::new(6, 5)),
+        ] {
+            let mut game = create_test_game(1);
+            game.board.snakes[0].head = Position::new(5, 5);
+            game.board.snakes[0].body = VecDeque::from([
+                Position::new(5, 5),
+                Position::new(5, 4),
+                Position::new(5, 3),
+            ]);
+
+            let moves = vec![("snake-0".to_string(), direction)];
+            let game = apply_turn(game, &moves);
+
+            assert_eq!(
+                game.board.snakes[0].head, expected_head,
+                "Failed for direction {:?}",
+                direction
+            );
+        }
+    }
+
+    #[test]
+    fn test_apply_turn_updates_you() {
+        let mut game = create_test_game(1);
+        game.board.snakes[0].head = Position::new(5, 5);
+        game.board.snakes[0].body = VecDeque::from([
+            Position::new(5, 5),
+            Position::new(5, 4),
+            Position::new(5, 3),
+        ]);
+        game.you = game.board.snakes[0].clone();
+
+        let moves = vec![("snake-0".to_string(), Move::Up)];
+        let game = apply_turn(game, &moves);
+
+        // "you" should be updated to match the snake in board.snakes
+        assert_eq!(game.you.head, Position::new(5, 6));
+        assert_eq!(game.you.health, 99);
+    }
+
+    #[test]
+    fn test_apply_turn_default_move() {
+        // If no move provided for a snake, it should default to Up
+        let mut game = create_test_game(1);
+        game.board.snakes[0].head = Position::new(5, 5);
+        game.board.snakes[0].body = VecDeque::from([
+            Position::new(5, 5),
+            Position::new(5, 4),
+            Position::new(5, 3),
+        ]);
+
+        let moves: Vec<(String, Move)> = vec![]; // No moves provided
+        let game = apply_turn(game, &moves);
+
+        // Should default to Up
+        assert_eq!(game.board.snakes[0].head, Position::new(5, 6));
+    }
+
+    #[test]
+    fn test_max_turns_constant() {
+        assert_eq!(MAX_TURNS, 500);
+    }
+
+    #[test]
+    fn test_dead_snake_doesnt_move() {
+        let mut game = create_test_game(1);
+        game.board.snakes[0].health = 0; // Already dead
+        let original_head = game.board.snakes[0].head;
+        let original_body = game.board.snakes[0].body.clone();
+
+        let moves = vec![("snake-0".to_string(), Move::Up)];
+        let game = apply_turn(game, &moves);
+
+        // Dead snake shouldn't move (head and body unchanged)
+        assert_eq!(game.board.snakes[0].health, 0);
+        assert_eq!(game.board.snakes[0].head, original_head);
+        assert_eq!(game.board.snakes[0].body, original_body);
     }
 
     fn create_test_game(num_snakes: usize) -> Game {
