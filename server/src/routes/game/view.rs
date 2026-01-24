@@ -56,17 +56,30 @@ pub async fn view_game(
                         }
                     }
                     div class="card-body" {
-                        p { "Board Size: " (game.board_size.as_str()) }
-                        p { "Game Type: " (game.game_type.as_str()) }
-                        p { "Status: " (game.status.as_str()) }
-                        p { "Created: " (game.created_at.format("%Y-%m-%d %H:%M:%S")) }
+                        // Board viewer iframe - always show, it handles waiting/empty games gracefully
+                        div class="board-viewer-container mb-4" style="width: 100%; max-width: 600px; aspect-ratio: 1;" {
+                            iframe
+                                id="board-viewer"
+                                src={ "https://board.battlesnake.com/?engine=" (format!("{}/api", std::env::var("BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string()))) "&game=" (game_id) }
+                                style="width: 100%; height: 100%; border: 1px solid #ccc; border-radius: 8px;"
+                                title="Battlesnake Board Viewer"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen {}
+                        }
+
+                        div class="game-info" {
+                            p { "Board Size: " (game.board_size.as_str()) }
+                            p { "Game Type: " (game.game_type.as_str()) }
+                            p { "Status: " (game.status.as_str()) }
+                            p { "Created: " (game.created_at.format("%Y-%m-%d %H:%M:%S")) }
+                        }
                     }
                 }
 
-                @if game.status != GameStatus::Finished {
+                @if game.status == GameStatus::Waiting {
                     div class="alert alert-info mb-4" {
                         p class="mb-0" {
-                            "This game is still being processed. "
+                            "This game is waiting to start. "
                             a href="" onclick="location.reload(); return false;" { "Refresh" }
                             " to check for updates."
                         }
