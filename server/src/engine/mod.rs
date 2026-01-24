@@ -821,7 +821,7 @@ mod tests {
 
     #[test]
     fn test_max_turns_constant() {
-        assert_eq!(MAX_TURNS, 500);
+        assert_eq!(MAX_TURNS, 5000);
     }
 
     #[test]
