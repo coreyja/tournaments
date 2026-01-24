@@ -3,6 +3,8 @@
 //! This module provides game simulation using the official Battlesnake rules.
 //! It uses the wire representation types directly for simplicity.
 
+pub mod frame;
+
 use battlesnake_game_types::types::{Move, RandomReasonableMovesGame};
 use battlesnake_game_types::wire_representation::{
     BattleSnake, Board, Game, NestedGame, Position, Ruleset, Settings,
