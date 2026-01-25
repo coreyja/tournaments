@@ -543,14 +543,7 @@ pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja:
         serde_json::to_value(&frame_0).wrap_err("Failed to serialize initial frame")?;
 
     tracing::info!(game_id = %game_id, "Storing turn 0");
-    crate::models::turn::create_turn_and_notify(
-        pool,
-        game_channels,
-        game_id,
-        0,
-        Some(frame_0_json),
-    )
-    .await?;
+    crate::models::turn::create_turn(pool, game_channels, game_id, 0, Some(frame_0_json)).await?;
     tracing::info!(game_id = %game_id, "Turn 0 stored successfully");
 
     // Run the game turn by turn
@@ -594,7 +587,7 @@ pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja:
             .wrap_err_with(|| format!("Failed to serialize frame {}", engine_game.turn))?;
 
         tracing::debug!(game_id = %game_id, turn = engine_game.turn, "Storing turn");
-        let turn = crate::models::turn::create_turn_and_notify(
+        let turn = crate::models::turn::create_turn(
             pool,
             game_channels,
             game_id,
