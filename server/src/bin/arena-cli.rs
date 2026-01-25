@@ -19,6 +19,11 @@ enum Commands {
         #[command(subcommand)]
         command: AuthCommands,
     },
+    /// Battlesnake management commands
+    Snakes {
+        #[command(subcommand)]
+        command: SnakesCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -51,6 +56,49 @@ enum TokenCommands {
     },
 }
 
+#[derive(Subcommand)]
+enum SnakesCommands {
+    /// List all your snakes
+    List,
+    /// Create a new snake
+    Create {
+        /// Name for the snake
+        name: String,
+        /// URL for the snake server
+        url: String,
+        /// Make the snake public (visible to other users)
+        #[arg(long)]
+        public: bool,
+    },
+    /// Show details of a snake
+    Show {
+        /// Snake ID
+        id: String,
+    },
+    /// Edit an existing snake
+    Edit {
+        /// Snake ID
+        id: String,
+        /// New name for the snake
+        #[arg(long)]
+        name: Option<String>,
+        /// New URL for the snake server
+        #[arg(long)]
+        url: Option<String>,
+        /// Make the snake public
+        #[arg(long, conflicts_with = "private")]
+        public: bool,
+        /// Make the snake private
+        #[arg(long, conflicts_with = "public")]
+        private: bool,
+    },
+    /// Delete a snake
+    Delete {
+        /// Snake ID
+        id: String,
+    },
+}
+
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
@@ -59,6 +107,7 @@ async fn main() -> color_eyre::Result<()> {
 
     match cli.command {
         Commands::Auth { command } => handle_auth_command(command).await?,
+        Commands::Snakes { command } => handle_snakes_command(command).await?,
     }
 
     Ok(())
@@ -168,6 +217,140 @@ async fn handle_token_command(command: TokenCommands) -> color_eyre::Result<()> 
                 let status = response.status();
                 let body = response.text().await.unwrap_or_default();
                 return Err(eyre!("Failed to revoke token: {} - {}", status, body));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_snakes_command(command: SnakesCommands) -> color_eyre::Result<()> {
+    let config = CliConfig::load()?;
+    let token = config
+        .auth
+        .as_ref()
+        .and_then(|a| a.token.as_ref())
+        .ok_or_else(|| eyre!("Not logged in. Run 'arena auth login' first."))?;
+
+    let client = reqwest::Client::new();
+    let base_url = config.api_url();
+
+    match command {
+        SnakesCommands::List => {
+            let response = client
+                .get(format!("{}/api/snakes", base_url))
+                .bearer_auth(token)
+                .send()
+                .await
+                .wrap_err("Failed to list snakes")?;
+
+            if !response.status().is_success() {
+                let status = response.status();
+                let body = response.text().await.unwrap_or_default();
+                return Err(eyre!("Failed to list snakes: {} - {}", status, body));
+            }
+
+            let snakes: Vec<serde_json::Value> = response.json().await?;
+            // Output as JSON
+            println!("{}", serde_json::to_string_pretty(&snakes)?);
+        }
+        SnakesCommands::Create { name, url, public } => {
+            let response = client
+                .post(format!("{}/api/snakes", base_url))
+                .bearer_auth(token)
+                .json(&serde_json::json!({
+                    "name": name,
+                    "url": url,
+                    "is_public": public
+                }))
+                .send()
+                .await
+                .wrap_err("Failed to create snake")?;
+
+            if !response.status().is_success() {
+                let status = response.status();
+                let body = response.text().await.unwrap_or_default();
+                return Err(eyre!("Failed to create snake: {} - {}", status, body));
+            }
+
+            let snake: serde_json::Value = response.json().await?;
+            println!("{}", serde_json::to_string_pretty(&snake)?);
+        }
+        SnakesCommands::Show { id } => {
+            let response = client
+                .get(format!("{}/api/snakes/{}", base_url, id))
+                .bearer_auth(token)
+                .send()
+                .await
+                .wrap_err("Failed to get snake")?;
+
+            if response.status() == reqwest::StatusCode::NOT_FOUND {
+                return Err(eyre!("Snake not found."));
+            } else if !response.status().is_success() {
+                let status = response.status();
+                let body = response.text().await.unwrap_or_default();
+                return Err(eyre!("Failed to get snake: {} - {}", status, body));
+            }
+
+            let snake: serde_json::Value = response.json().await?;
+            println!("{}", serde_json::to_string_pretty(&snake)?);
+        }
+        SnakesCommands::Edit {
+            id,
+            name,
+            url,
+            public,
+            private,
+        } => {
+            // Build the update payload with only provided fields
+            let mut update: serde_json::Map<String, serde_json::Value> = serde_json::Map::new();
+            if let Some(name) = name {
+                update.insert("name".to_string(), serde_json::Value::String(name));
+            }
+            if let Some(url) = url {
+                update.insert("url".to_string(), serde_json::Value::String(url));
+            }
+            if public {
+                update.insert("is_public".to_string(), serde_json::Value::Bool(true));
+            } else if private {
+                update.insert("is_public".to_string(), serde_json::Value::Bool(false));
+            }
+
+            let response = client
+                .put(format!("{}/api/snakes/{}", base_url, id))
+                .bearer_auth(token)
+                .json(&update)
+                .send()
+                .await
+                .wrap_err("Failed to update snake")?;
+
+            if response.status() == reqwest::StatusCode::NOT_FOUND {
+                return Err(eyre!("Snake not found."));
+            } else if !response.status().is_success() {
+                let status = response.status();
+                let body = response.text().await.unwrap_or_default();
+                return Err(eyre!("Failed to update snake: {} - {}", status, body));
+            }
+
+            let snake: serde_json::Value = response.json().await?;
+            println!("{}", serde_json::to_string_pretty(&snake)?);
+        }
+        SnakesCommands::Delete { id } => {
+            let response = client
+                .delete(format!("{}/api/snakes/{}", base_url, id))
+                .bearer_auth(token)
+                .send()
+                .await
+                .wrap_err("Failed to delete snake")?;
+
+            if response.status() == reqwest::StatusCode::NO_CONTENT {
+                println!("Snake deleted successfully.");
+            } else if response.status() == reqwest::StatusCode::NOT_FOUND {
+                return Err(eyre!("Snake not found."));
+            } else {
+                let status = response.status();
+                let body = response.text().await.unwrap_or_default();
+                return Err(eyre!("Failed to delete snake: {} - {}", status, body));
             }
         }
     }
