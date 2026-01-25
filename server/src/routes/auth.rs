@@ -1,6 +1,6 @@
 use axum::{
     extract::FromRequestParts,
-    http::{StatusCode, request::Parts},
+    http::{StatusCode, header::AUTHORIZATION, request::Parts},
     response::{IntoResponse as _, Response},
 };
 use cja::server::cookies::{Cookie, CookieJar};
@@ -10,11 +10,12 @@ use uuid::Uuid;
 use crate::{
     errors::ServerError,
     models::{
+        api_token::{hash_token, validate_token},
         session::{
             SESSION_COOKIE_NAME, SESSION_EXPIRATION_SECONDS, Session, create_session,
             get_session_with_user,
         },
-        user::User,
+        user::{User, get_user_by_id},
     },
     state::AppState,
 };
@@ -204,5 +205,71 @@ impl FromRequestParts<AppState> for CurrentUserWithSession {
             user,
             session: current_session.session,
         })
+    }
+}
+
+/// Extractor for API authentication via Bearer token
+///
+/// This extractor validates the Authorization: Bearer <token> header
+/// and returns the authenticated user. Returns 401 if no valid token is provided.
+///
+/// Example:
+/// ```
+/// async fn api_route(
+///    ApiUser(user): ApiUser,
+/// ) -> impl IntoResponse {
+///    // User is authenticated via API token
+///    Json(user)
+/// }
+/// ```
+pub struct ApiUser(pub User);
+
+impl FromRequestParts<AppState> for ApiUser {
+    type Rejection = axum::response::Response;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        // Extract the Authorization header
+        let auth_header = parts
+            .headers
+            .get(AUTHORIZATION)
+            .and_then(|value| value.to_str().ok())
+            .ok_or_else(|| {
+                (StatusCode::UNAUTHORIZED, "Missing Authorization header").into_response()
+            })?;
+
+        // Parse "Bearer <token>"
+        let token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                "Invalid Authorization header format, expected 'Bearer <token>'",
+            )
+                .into_response()
+        })?;
+
+        // Hash the token and validate it
+        let token_hash = hash_token(token);
+        let user_id = validate_token(&state.db, &token_hash)
+            .await
+            .map_err(|e| {
+                tracing::error!("Token validation error: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            })?
+            .ok_or_else(|| {
+                (StatusCode::UNAUTHORIZED, "Invalid or revoked token").into_response()
+            })?;
+
+        // Fetch the user
+        let user = get_user_by_id(&state.db, user_id)
+            .await
+            .map_err(|e| {
+                tracing::error!("User fetch error: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            })?
+            .ok_or_else(|| (StatusCode::UNAUTHORIZED, "User not found").into_response())?;
+
+        Ok(ApiUser(user))
     }
 }

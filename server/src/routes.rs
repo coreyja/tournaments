@@ -1,10 +1,16 @@
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{delete, get, post},
+};
 use maud::html;
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::{components::page_factory::PageFactory, errors::ServerResult, state::AppState};
 
 // Include route modules
+pub mod api;
 pub mod auth;
 pub mod battlesnake;
 pub mod game;
@@ -17,10 +23,17 @@ pub fn routes(app_state: AppState) -> axum::Router {
         .allow_methods(Any)
         .allow_headers(Any);
 
+    // API v1 routes for CLI/programmatic access (require Bearer token auth)
+    let api_v1_routes = axum::Router::new()
+        .route("/tokens", post(api::tokens::create_token))
+        .route("/tokens", get(api::tokens::list_tokens))
+        .route("/tokens/{id}", delete(api::tokens::revoke_token));
+
     // API routes with CORS enabled (for board viewer)
     let api_routes = axum::Router::new()
         .route("/games/{id}", get(game::get_game_info))
         .route("/games/{id}/events", get(game::game_events_websocket))
+        .nest("/v1", api_v1_routes)
         .layer(cors);
 
     axum::Router::new()
