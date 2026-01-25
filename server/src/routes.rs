@@ -1,5 +1,6 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get};
 use maud::html;
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::{components::page_factory::PageFactory, errors::ServerResult, state::AppState};
 
@@ -10,6 +11,18 @@ pub mod game;
 pub mod github_auth;
 
 pub fn routes(app_state: AppState) -> axum::Router {
+    // CORS layer for API routes - allows board.battlesnake.com to access our API
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
+    // API routes with CORS enabled (for board viewer)
+    let api_routes = axum::Router::new()
+        .route("/games/{id}", get(game::get_game_info))
+        .route("/games/{id}/events", get(game::game_events_websocket))
+        .layer(cors);
+
     axum::Router::new()
         // Public pages
         .route("/", get(root_page))
@@ -63,6 +76,8 @@ pub fn routes(app_state: AppState) -> axum::Router {
             axum::routing::post(game::remove_battlesnake),
         )
         .route("/games/flow/{id}/search", get(game::search_battlesnakes))
+        // Game API routes for board viewer (with CORS)
+        .nest("/api", api_routes)
         // Static files
         .route(
             "/static/{*path}",
