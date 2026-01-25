@@ -100,7 +100,7 @@ async fn handle_token_command(command: TokenCommands) -> color_eyre::Result<()> 
             });
 
             let response = client
-                .post(format!("{}/api/v1/tokens", base_url))
+                .post(format!("{}/api/tokens", base_url))
                 .bearer_auth(token)
                 .json(&serde_json::json!({ "name": name }))
                 .send()
@@ -122,7 +122,7 @@ async fn handle_token_command(command: TokenCommands) -> color_eyre::Result<()> 
         }
         TokenCommands::List => {
             let response = client
-                .get(format!("{}/api/v1/tokens", base_url))
+                .get(format!("{}/api/tokens", base_url))
                 .bearer_auth(token)
                 .send()
                 .await
@@ -154,7 +154,7 @@ async fn handle_token_command(command: TokenCommands) -> color_eyre::Result<()> 
         }
         TokenCommands::Revoke { id } => {
             let response = client
-                .delete(format!("{}/api/v1/tokens/{}", base_url, id))
+                .delete(format!("{}/api/tokens/{}", base_url, id))
                 .bearer_auth(token)
                 .send()
                 .await
@@ -203,7 +203,7 @@ async fn login() -> color_eyre::Result<()> {
     // Validate the token by trying to list tokens
     let client = reqwest::Client::new();
     let response = client
-        .get(format!("{}/api/v1/tokens", base_url))
+        .get(format!("{}/api/tokens", base_url))
         .bearer_auth(&token)
         .send()
         .await

@@ -23,17 +23,13 @@ pub fn routes(app_state: AppState) -> axum::Router {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    // API v1 routes for CLI/programmatic access (require Bearer token auth)
-    let api_v1_routes = axum::Router::new()
-        .route("/tokens", post(api::tokens::create_token))
-        .route("/tokens", get(api::tokens::list_tokens))
-        .route("/tokens/{id}", delete(api::tokens::revoke_token));
-
-    // API routes with CORS enabled (for board viewer)
+    // API routes with CORS enabled (for board viewer and CLI/programmatic access)
     let api_routes = axum::Router::new()
         .route("/games/{id}", get(game::get_game_info))
         .route("/games/{id}/events", get(game::game_events_websocket))
-        .nest("/v1", api_v1_routes)
+        .route("/tokens", post(api::tokens::create_token))
+        .route("/tokens", get(api::tokens::list_tokens))
+        .route("/tokens/{id}", delete(api::tokens::revoke_token))
         .layer(cors);
 
     axum::Router::new()
