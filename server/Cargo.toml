@@ -65,9 +65,27 @@ mime_guess = "2.0.5"
 google-cloud-storage = "0.22"
 zstd = "0.13"
 thiserror = "1"
+hex = "0.4"
+clap = { version = "4", features = ["derive"] }
+dirs = "5"
+toml = "0.8"
+open = "5"
+hostname = "0.4"
 
 battlesnake-game-types = { git = "https://github.com/fables-tales/battlesnake-game-types", branch = "main" }
 tokio-util = { version = "0.7.14", features = ["rt"] }
+
+[lib]
+name = "arena"
+path = "src/lib.rs"
+
+[[bin]]
+name = "arena"
+path = "src/main.rs"
+
+[[bin]]
+name = "arena-cli"
+path = "src/bin/arena-cli.rs"
 
 [build-dependencies]
 vergen = { version = "8.3.1", features = [

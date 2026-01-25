@@ -1,6 +1,6 @@
 use axum::{
     extract::FromRequestParts,
-    http::{StatusCode, request::Parts},
+    http::{StatusCode, header::AUTHORIZATION, request::Parts},
     response::{IntoResponse as _, Response},
 };
 use cja::server::cookies::{Cookie, CookieJar};
@@ -10,11 +10,12 @@ use uuid::Uuid;
 use crate::{
     errors::ServerError,
     models::{
+        api_token::validate_token,
         session::{
             SESSION_COOKIE_NAME, SESSION_EXPIRATION_SECONDS, Session, create_session,
             get_session_with_user,
         },
-        user::User,
+        user::{User, get_user_by_id},
     },
     state::AppState,
 };
@@ -204,5 +205,84 @@ impl FromRequestParts<AppState> for CurrentUserWithSession {
             user,
             session: current_session.session,
         })
+    }
+}
+
+/// Extractor for API authentication via Bearer token OR session cookie
+///
+/// This extractor tries Bearer token auth first, then falls back to session auth.
+/// Use this for API endpoints that should work from both CLI (token) and web UI (session).
+///
+/// Example:
+/// ```
+/// async fn api_route(
+///    ApiUser(user): ApiUser,
+/// ) -> impl IntoResponse {
+///    // User is authenticated via API token or session
+///    Json(user)
+/// }
+/// ```
+pub struct ApiUser(pub User);
+
+/// Result of attempting Bearer token authentication
+enum BearerAuthResult {
+    /// Successfully authenticated user
+    Authenticated(User),
+    /// Authorization header present but token invalid/revoked
+    InvalidToken,
+    /// No Authorization header present
+    NoHeader,
+}
+
+/// Attempt Bearer token authentication
+async fn try_bearer_auth(parts: &Parts, state: &AppState) -> BearerAuthResult {
+    let Some(auth_header) = parts.headers.get(AUTHORIZATION) else {
+        return BearerAuthResult::NoHeader;
+    };
+
+    let Ok(auth_str) = auth_header.to_str() else {
+        return BearerAuthResult::InvalidToken;
+    };
+
+    let Some(token) = auth_str.strip_prefix("Bearer ") else {
+        return BearerAuthResult::InvalidToken;
+    };
+
+    // validate_token hashes the token internally
+    let user_id = match validate_token(&state.db, token).await {
+        Ok(Some(id)) => id,
+        _ => return BearerAuthResult::InvalidToken,
+    };
+
+    match get_user_by_id(&state.db, user_id).await {
+        Ok(Some(user)) => BearerAuthResult::Authenticated(user),
+        _ => BearerAuthResult::InvalidToken,
+    }
+}
+
+impl FromRequestParts<AppState> for ApiUser {
+    type Rejection = axum::response::Response;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        match try_bearer_auth(parts, state).await {
+            BearerAuthResult::Authenticated(user) => return Ok(ApiUser(user)),
+            BearerAuthResult::InvalidToken => {
+                return Err((StatusCode::UNAUTHORIZED, "Invalid or revoked token").into_response());
+            }
+            BearerAuthResult::NoHeader => {
+                // Fall through to session auth
+            }
+        }
+
+        // No Bearer token, try session auth
+        let session = CurrentSession::from_request_parts(parts, state).await?;
+
+        session
+            .user
+            .map(ApiUser)
+            .ok_or_else(|| (StatusCode::UNAUTHORIZED, "Authentication required").into_response())
     }
 }
