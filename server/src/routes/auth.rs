@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::{
     errors::ServerError,
     models::{
-        api_token::{hash_token, validate_token},
+        api_token::validate_token,
         session::{
             SESSION_COOKIE_NAME, SESSION_EXPIRATION_SECONDS, Session, create_session,
             get_session_with_user,
@@ -248,9 +248,8 @@ async fn try_bearer_auth(parts: &Parts, state: &AppState) -> BearerAuthResult {
         return BearerAuthResult::InvalidToken;
     };
 
-    let token_hash = hash_token(token);
-
-    let user_id = match validate_token(&state.db, &token_hash).await {
+    // validate_token hashes the token internally
+    let user_id = match validate_token(&state.db, token).await {
         Ok(Some(id)) => id,
         _ => return BearerAuthResult::InvalidToken,
     };

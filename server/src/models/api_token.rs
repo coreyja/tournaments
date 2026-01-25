@@ -32,7 +32,7 @@ fn generate_token_secret() -> String {
 }
 
 /// Hash a token secret using SHA-256, returning the hex-encoded hash
-pub fn hash_token(secret: &str) -> String {
+fn hash_token(secret: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(secret.as_bytes());
     hex::encode(hasher.finalize())
@@ -82,8 +82,12 @@ pub async fn list_user_tokens(pool: &PgPool, user_id: Uuid) -> cja::Result<Vec<A
     Ok(tokens)
 }
 
-/// Lookup a token by its hash and return the associated user_id if valid (not revoked)
-pub async fn validate_token(pool: &PgPool, token_hash: &str) -> cja::Result<Option<Uuid>> {
+/// Validate a raw token secret and return the associated user_id if valid (not revoked)
+///
+/// This function hashes the token internally to prevent accidentally passing unhashed tokens.
+pub async fn validate_token(pool: &PgPool, token_secret: &str) -> cja::Result<Option<Uuid>> {
+    let token_hash = hash_token(token_secret);
+
     let result: Option<Uuid> = sqlx::query_scalar(
         r#"
         UPDATE api_tokens
