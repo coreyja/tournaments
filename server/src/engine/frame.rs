@@ -133,6 +133,87 @@ pub fn game_to_frame(game: &Game, death_info: &[DeathInfo]) -> EngineGameFrame {
     }
 }
 
+use crate::snake_client::MoveResult;
+
+/// Convert a Game state to a frame for the board viewer, including latency info from move results
+pub fn game_to_frame_with_latency(
+    game: &Game,
+    death_info: &[DeathInfo],
+    move_results: &[MoveResult],
+) -> EngineGameFrame {
+    EngineGameFrame {
+        turn: game.turn,
+        snakes: game
+            .board
+            .snakes
+            .iter()
+            .map(|s| {
+                let death = death_info
+                    .iter()
+                    .find(|d| d.snake_id == s.id)
+                    .map(|d| FrameDeath {
+                        cause: d.cause.clone(),
+                        turn: d.turn,
+                        eliminated_by: d.eliminated_by.clone(),
+                    });
+
+                let (eliminated_cause, eliminated_by) = if s.health <= 0 {
+                    death_info
+                        .iter()
+                        .find(|d| d.snake_id == s.id)
+                        .map(|d| (d.cause.clone(), d.eliminated_by.clone()))
+                        .unwrap_or_default()
+                } else {
+                    Default::default()
+                };
+
+                // Find latency for this snake from move results
+                let latency = move_results
+                    .iter()
+                    .find(|r| r.snake_id == s.id)
+                    .map(|r| {
+                        if r.timed_out {
+                            "timeout".to_string()
+                        } else {
+                            r.latency_ms
+                                .map(|ms| ms.to_string())
+                                .unwrap_or_else(|| "0".to_string())
+                        }
+                    })
+                    .unwrap_or_else(|| "0".to_string());
+
+                // Get shout from move result if available
+                let shout = move_results
+                    .iter()
+                    .find(|r| r.snake_id == s.id)
+                    .and_then(|r| r.shout.clone())
+                    .or_else(|| s.shout.clone())
+                    .unwrap_or_default();
+
+                FrameSnake {
+                    id: s.id.clone(),
+                    name: s.name.clone(),
+                    body: body_to_coords(&s.body),
+                    health: s.health,
+                    color: generate_snake_color(&s.id),
+                    head_type: "default".to_string(),
+                    tail_type: "default".to_string(),
+                    latency,
+                    shout,
+                    squad: "".to_string(),
+                    api_version: "1".to_string(),
+                    author: "".to_string(),
+                    death,
+                    eliminated_cause,
+                    eliminated_by,
+                }
+            })
+            .collect(),
+        food: game.board.food.iter().map(|p| (*p).into()).collect(),
+        hazards: game.board.hazards.iter().map(|p| (*p).into()).collect(),
+    }
+}
+
 /// Generate a consistent color for a snake based on its ID
 fn generate_snake_color(id: &str) -> String {
     // Generate a color from the hash of the ID

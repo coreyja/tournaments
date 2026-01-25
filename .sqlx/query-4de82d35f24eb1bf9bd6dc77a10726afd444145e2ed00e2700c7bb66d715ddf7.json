@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            snake_turn_id,\n            turn_id,\n            game_battlesnake_id,\n            direction,\n            created_at\n        FROM snake_turns\n        WHERE turn_id = $1\n        ",
+  "query": "\n        SELECT\n            snake_turn_id,\n            turn_id,\n            game_battlesnake_id,\n            direction,\n            latency_ms,\n            timed_out,\n            created_at\n        FROM snake_turns\n        WHERE turn_id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -25,6 +25,16 @@
       },
       {
         "ordinal": 4,
+        "name": "latency_ms",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "timed_out",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -39,8 +49,10 @@
       false,
       false,
       false,
+      true,
+      false,
       false
     ]
   },
-  "hash": "ca893b23060a4e56dfac8610b1516a353b70dfc176b6a85a106141f2f99c5b9a"
+  "hash": "4de82d35f24eb1bf9bd6dc77a10726afd444145e2ed00e2700c7bb66d715ddf7"
 }
