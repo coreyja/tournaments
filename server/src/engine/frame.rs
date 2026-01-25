@@ -484,6 +484,110 @@ mod tests {
         assert!(json.contains("\"EliminatedBy\":\"snake-2\""));
     }
 
+    #[test]
+    fn test_game_to_frame_with_latency_basic() {
+        use crate::snake_client::MoveResult;
+        use battlesnake_game_types::types::Move;
+
+        let game = create_test_game();
+        let death_info: Vec<DeathInfo> = vec![];
+        let move_results = vec![MoveResult {
+            snake_id: "snake-1".to_string(),
+            direction: Move::Up,
+            latency_ms: Some(42),
+            timed_out: false,
+            shout: None,
+        }];
+
+        let frame = game_to_frame_with_latency(&game, &death_info, &move_results);
+
+        assert_eq!(frame.snakes[0].latency, "42");
+    }
+
+    #[test]
+    fn test_game_to_frame_with_latency_timeout() {
+        use crate::snake_client::MoveResult;
+        use battlesnake_game_types::types::Move;
+
+        let game = create_test_game();
+        let death_info: Vec<DeathInfo> = vec![];
+        let move_results = vec![MoveResult {
+            snake_id: "snake-1".to_string(),
+            direction: Move::Up,
+            latency_ms: None,
+            timed_out: true,
+            shout: None,
+        }];
+
+        let frame = game_to_frame_with_latency(&game, &death_info, &move_results);
+
+        assert_eq!(frame.snakes[0].latency, "timeout");
+    }
+
+    #[test]
+    fn test_game_to_frame_with_latency_shout_from_move_result() {
+        use crate::snake_client::MoveResult;
+        use battlesnake_game_types::types::Move;
+
+        let game = create_test_game();
+        let death_info: Vec<DeathInfo> = vec![];
+        let move_results = vec![MoveResult {
+            snake_id: "snake-1".to_string(),
+            direction: Move::Up,
+            latency_ms: Some(100),
+            timed_out: false,
+            shout: Some("Hello from move!".to_string()),
+        }];
+
+        let frame = game_to_frame_with_latency(&game, &death_info, &move_results);
+
+        // Shout from move result should be used
+        assert_eq!(frame.snakes[0].shout, "Hello from move!");
+    }
+
+    #[test]
+    fn test_game_to_frame_with_latency_fallback_shout() {
+        use crate::snake_client::MoveResult;
+        use battlesnake_game_types::types::Move;
+
+        let game = create_test_game(); // This game has a snake with shout "Hello!"
+        let death_info: Vec<DeathInfo> = vec![];
+        let move_results = vec![MoveResult {
+            snake_id: "snake-1".to_string(),
+            direction: Move::Up,
+            latency_ms: Some(100),
+            timed_out: false,
+            shout: None, // No shout in move result
+        }];
+
+        let frame = game_to_frame_with_latency(&game, &death_info, &move_results);
+
+        // Should fall back to snake's existing shout
+        assert_eq!(frame.snakes[0].shout, "Hello!");
+    }
+
+    #[test]
+    fn test_game_to_frame_with_latency_no_matching_result() {
+        use crate::snake_client::MoveResult;
+        use battlesnake_game_types::types::Move;
+
+        let game = create_test_game();
+        let death_info: Vec<DeathInfo> = vec![];
+        // Move result for a different snake
+        let move_results = vec![MoveResult {
+            snake_id: "other-snake".to_string(),
+            direction: Move::Down,
+            latency_ms: Some(50),
+            timed_out: false,
+            shout: None,
+        }];
+
+        let frame = game_to_frame_with_latency(&game, &death_info, &move_results);
+
+        // Should default to "0" when no matching result
+        assert_eq!(frame.snakes[0].latency, "0");
+    }
+
     fn create_test_game() -> Game {
         let snake = BattleSnake {
             id: "snake-1".to_string(),

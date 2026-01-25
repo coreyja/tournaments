@@ -251,6 +251,50 @@ pub async fn request_end_parallel(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use battlesnake_game_types::wire_representation::{Board, NestedGame, Position, Ruleset};
+    use std::collections::VecDeque;
+
+    fn create_test_snake(id: &str) -> BattleSnake {
+        BattleSnake {
+            id: id.to_string(),
+            name: format!("Snake {}", id),
+            head: Position::new(5, 5),
+            body: VecDeque::from([
+                Position::new(5, 5),
+                Position::new(5, 4),
+                Position::new(5, 3),
+            ]),
+            health: 100,
+            shout: None,
+            actual_length: None,
+        }
+    }
+
+    fn create_test_game_with_snakes(snakes: Vec<BattleSnake>) -> Game {
+        let you = snakes.first().cloned().unwrap_or_else(|| create_test_snake("default"));
+        Game {
+            you,
+            board: Board {
+                height: 11,
+                width: 11,
+                food: vec![Position::new(3, 3)],
+                snakes,
+                hazards: vec![],
+            },
+            turn: 5,
+            game: NestedGame {
+                id: "test-game".to_string(),
+                ruleset: Ruleset {
+                    name: "standard".to_string(),
+                    version: "v1.0.0".to_string(),
+                    settings: None,
+                },
+                timeout: 500,
+                map: None,
+                source: None,
+            },
+        }
+    }
 
     #[test]
     fn test_parse_direction() {
@@ -278,5 +322,63 @@ mod tests {
         assert_eq!(cloned.latency_ms, Some(100));
         assert!(!cloned.timed_out);
         assert_eq!(cloned.shout, Some("hello".to_string()));
+    }
+
+    #[test]
+    fn test_build_request_for_snake_sets_you_field() {
+        let snake1 = create_test_snake("snake-1");
+        let snake2 = create_test_snake("snake-2");
+        let game = create_test_game_with_snakes(vec![snake1.clone(), snake2.clone()]);
+
+        // Build request for snake2 - the `you` field should be snake2
+        let request = build_request_for_snake(&game, &snake2);
+
+        assert_eq!(request.you.id, "snake-2");
+        assert_eq!(request.you.name, "Snake snake-2");
+        // Board should be preserved
+        assert_eq!(request.board.snakes.len(), 2);
+        assert_eq!(request.turn, 5);
+        assert_eq!(request.game.id, "test-game");
+    }
+
+    #[test]
+    fn test_build_request_for_snake_preserves_board() {
+        let snake1 = create_test_snake("snake-1");
+        let game = create_test_game_with_snakes(vec![snake1.clone()]);
+
+        let request = build_request_for_snake(&game, &snake1);
+
+        // All board properties should be preserved
+        assert_eq!(request.board.height, 11);
+        assert_eq!(request.board.width, 11);
+        assert_eq!(request.board.food.len(), 1);
+        assert_eq!(request.board.food[0].x, 3);
+        assert_eq!(request.board.food[0].y, 3);
+    }
+
+    #[test]
+    fn test_move_response_deserialization() {
+        let json = r#"{"move": "up"}"#;
+        let response: MoveResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.direction, "up");
+        assert!(response.shout.is_none());
+    }
+
+    #[test]
+    fn test_move_response_deserialization_with_shout() {
+        let json = r#"{"move": "down", "shout": "I'm coming for you!"}"#;
+        let response: MoveResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.direction, "down");
+        assert_eq!(response.shout, Some("I'm coming for you!".to_string()));
+    }
+
+    #[test]
+    fn test_move_response_deserialization_case_sensitivity() {
+        // The API spec says "move" should be lowercase, but snakes might return different cases
+        let json = r#"{"move": "LEFT"}"#;
+        let response: MoveResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.direction, "LEFT");
+        // parse_direction handles case normalization
+        assert_eq!(parse_direction(&response.direction), Some(Move::Left));
     }
 }
