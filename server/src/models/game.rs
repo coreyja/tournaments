@@ -473,10 +473,7 @@ pub async fn update_game_status(
 ///
 /// This function calls the actual snake APIs to get moves, with timeout handling.
 /// On timeout, snakes continue in the same direction as their last move.
-pub async fn run_game(
-    app_state: &crate::state::AppState,
-    game_id: Uuid,
-) -> cja::Result<()> {
+pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja::Result<()> {
     use crate::engine::MAX_TURNS;
     use crate::engine::frame::{DeathInfo, game_to_frame, game_to_frame_with_latency};
     use crate::snake_client::{

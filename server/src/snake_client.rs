@@ -68,8 +68,8 @@ pub async fn request_move(
 
     let start = Instant::now();
 
-    let result = tokio::time::timeout(timeout, client.post(&move_url).json(&request_body).send())
-        .await;
+    let result =
+        tokio::time::timeout(timeout, client.post(&move_url).json(&request_body).send()).await;
 
     let elapsed = start.elapsed().as_millis() as i64;
 
@@ -138,7 +138,13 @@ pub async fn request_move(
 }
 
 /// Call /start endpoint (fire and forget, no response expected)
-pub async fn request_start(client: &Client, url: &str, game: &Game, snake: &BattleSnake, timeout: Duration) {
+pub async fn request_start(
+    client: &Client,
+    url: &str,
+    game: &Game,
+    snake: &BattleSnake,
+    timeout: Duration,
+) {
     let request_body = build_request_for_snake(game, snake);
     let start_url = format!("{}/start", url.trim_end_matches('/'));
 
@@ -157,7 +163,13 @@ pub async fn request_start(client: &Client, url: &str, game: &Game, snake: &Batt
 }
 
 /// Call /end endpoint (fire and forget, no response expected)
-pub async fn request_end(client: &Client, url: &str, game: &Game, snake: &BattleSnake, timeout: Duration) {
+pub async fn request_end(
+    client: &Client,
+    url: &str,
+    game: &Game,
+    snake: &BattleSnake,
+    timeout: Duration,
+) {
     let request_body = build_request_for_snake(game, snake);
     let end_url = format!("{}/end", url.trim_end_matches('/'));
 
@@ -271,7 +283,10 @@ mod tests {
     }
 
     fn create_test_game_with_snakes(snakes: Vec<BattleSnake>) -> Game {
-        let you = snakes.first().cloned().unwrap_or_else(|| create_test_snake("default"));
+        let you = snakes
+            .first()
+            .cloned()
+            .unwrap_or_else(|| create_test_snake("default"));
         Game {
             you,
             board: Board {
