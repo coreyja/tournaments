@@ -208,21 +208,36 @@ impl FromRequestParts<AppState> for CurrentUserWithSession {
     }
 }
 
-/// Extractor for API authentication via Bearer token
+/// Extractor for API authentication via Bearer token OR session cookie
 ///
-/// This extractor validates the Authorization: Bearer <token> header
-/// and returns the authenticated user. Returns 401 if no valid token is provided.
+/// This extractor tries Bearer token auth first, then falls back to session auth.
+/// Use this for API endpoints that should work from both CLI (token) and web UI (session).
 ///
 /// Example:
 /// ```
 /// async fn api_route(
 ///    ApiUser(user): ApiUser,
 /// ) -> impl IntoResponse {
-///    // User is authenticated via API token
+///    // User is authenticated via API token or session
 ///    Json(user)
 /// }
 /// ```
 pub struct ApiUser(pub User);
+
+/// Try to authenticate via Bearer token, returns None if no token or invalid
+async fn try_bearer_auth(parts: &Parts, state: &AppState) -> Option<User> {
+    let auth_header = parts
+        .headers
+        .get(AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())?;
+
+    let token = auth_header.strip_prefix("Bearer ")?;
+
+    let token_hash = hash_token(token);
+    let user_id = validate_token(&state.db, &token_hash).await.ok()??;
+
+    get_user_by_id(&state.db, user_id).await.ok()?
+}
 
 impl FromRequestParts<AppState> for ApiUser {
     type Rejection = axum::response::Response;
@@ -231,45 +246,27 @@ impl FromRequestParts<AppState> for ApiUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        // Extract the Authorization header
-        let auth_header = parts
-            .headers
-            .get(AUTHORIZATION)
-            .and_then(|value| value.to_str().ok())
-            .ok_or_else(|| {
-                (StatusCode::UNAUTHORIZED, "Missing Authorization header").into_response()
-            })?;
+        // Try Bearer token auth first
+        if let Some(user) = try_bearer_auth(parts, state).await {
+            return Ok(ApiUser(user));
+        }
 
-        // Parse "Bearer <token>"
-        let token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
-            (
-                StatusCode::UNAUTHORIZED,
-                "Invalid Authorization header format, expected 'Bearer <token>'",
-            )
-                .into_response()
-        })?;
+        // Fall back to session auth
+        // Note: We need to clone parts headers to check for Authorization after session extraction
+        let had_auth_header = parts.headers.contains_key(AUTHORIZATION);
 
-        // Hash the token and validate it
-        let token_hash = hash_token(token);
-        let user_id = validate_token(&state.db, &token_hash)
-            .await
-            .map_err(|e| {
-                tracing::error!("Token validation error: {}", e);
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            })?
-            .ok_or_else(|| {
-                (StatusCode::UNAUTHORIZED, "Invalid or revoked token").into_response()
-            })?;
+        let session = CurrentSession::from_request_parts(parts, state).await?;
 
-        // Fetch the user
-        let user = get_user_by_id(&state.db, user_id)
-            .await
-            .map_err(|e| {
-                tracing::error!("User fetch error: {}", e);
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            })?
-            .ok_or_else(|| (StatusCode::UNAUTHORIZED, "User not found").into_response())?;
+        if let Some(user) = session.user {
+            return Ok(ApiUser(user));
+        }
 
-        Ok(ApiUser(user))
+        // If they provided an Authorization header but we got here, the token was invalid
+        if had_auth_header {
+            return Err((StatusCode::UNAUTHORIZED, "Invalid or revoked token").into_response());
+        }
+
+        // No auth at all
+        Err((StatusCode::UNAUTHORIZED, "Authentication required").into_response())
     }
 }
