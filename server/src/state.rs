@@ -15,6 +15,8 @@ pub struct AppState {
     pub gcs_bucket: Option<String>,
     /// Broadcast channels for live game updates
     pub game_channels: GameChannels,
+    /// HTTP client for calling snake APIs
+    pub http_client: reqwest::Client,
 }
 
 impl AppState {
@@ -94,6 +96,14 @@ impl AppState {
             tracing::info!("GCS bucket configured for game backup");
         }
 
+        // HTTP client for calling snake APIs (connection pooling, timeout slightly longer than game timeout)
+        let http_client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(600))
+            .pool_max_idle_per_host(10)
+            .build()
+            .wrap_err("Failed to create HTTP client")?;
+        tracing::info!("HTTP client initialized for snake API calls");
+
         Ok(Self {
             db: pool,
             cookie_key,
@@ -101,6 +111,7 @@ impl AppState {
             engine_db,
             gcs_bucket,
             game_channels: GameChannels::new(),
+            http_client,
         })
     }
 }

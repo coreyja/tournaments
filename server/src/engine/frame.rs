@@ -81,8 +81,16 @@ impl From<Position> for FrameCoord {
     }
 }
 
+use crate::snake_client::MoveResult;
+
 /// Convert a Game state to a frame for the board viewer
-pub fn game_to_frame(game: &Game, death_info: &[DeathInfo]) -> EngineGameFrame {
+///
+/// Includes latency info from move results when provided.
+pub fn game_to_frame(
+    game: &Game,
+    death_info: &[DeathInfo],
+    move_results: &[MoveResult],
+) -> EngineGameFrame {
     EngineGameFrame {
         turn: game.turn,
         snakes: game
@@ -109,6 +117,29 @@ pub fn game_to_frame(game: &Game, death_info: &[DeathInfo]) -> EngineGameFrame {
                     Default::default()
                 };
 
+                // Find latency for this snake from move results
+                let latency = move_results
+                    .iter()
+                    .find(|r| r.snake_id == s.id)
+                    .map(|r| {
+                        if r.timed_out {
+                            "timeout".to_string()
+                        } else {
+                            r.latency_ms
+                                .map(|ms| ms.to_string())
+                                .unwrap_or_else(|| "0".to_string())
+                        }
+                    })
+                    .unwrap_or_else(|| "0".to_string());
+
+                // Get shout from move result if available
+                let shout = move_results
+                    .iter()
+                    .find(|r| r.snake_id == s.id)
+                    .and_then(|r| r.shout.clone())
+                    .or_else(|| s.shout.clone())
+                    .unwrap_or_default();
+
                 FrameSnake {
                     id: s.id.clone(),
                     name: s.name.clone(),
@@ -117,8 +148,8 @@ pub fn game_to_frame(game: &Game, death_info: &[DeathInfo]) -> EngineGameFrame {
                     color: generate_snake_color(&s.id),
                     head_type: "default".to_string(),
                     tail_type: "default".to_string(),
-                    latency: "0".to_string(),
-                    shout: s.shout.clone().unwrap_or_default(),
+                    latency,
+                    shout,
                     squad: "".to_string(),
                     api_version: "1".to_string(),
                     author: "".to_string(),
@@ -233,7 +264,7 @@ mod tests {
         let game = create_test_game();
         let death_info: Vec<DeathInfo> = vec![];
 
-        let frame = game_to_frame(&game, &death_info);
+        let frame = game_to_frame(&game, &death_info, &[]);
 
         assert_eq!(frame.turn, 0);
         assert_eq!(frame.snakes.len(), 1);
@@ -257,7 +288,7 @@ mod tests {
             eliminated_by: "".to_string(),
         }];
 
-        let frame = game_to_frame(&game, &death_info);
+        let frame = game_to_frame(&game, &death_info, &[]);
 
         assert_eq!(frame.snakes.len(), 1);
         assert!(frame.snakes[0].death.is_some());
@@ -279,7 +310,7 @@ mod tests {
             eliminated_by: "snake-2".to_string(),
         }];
 
-        let frame = game_to_frame(&game, &death_info);
+        let frame = game_to_frame(&game, &death_info, &[]);
 
         let death = frame.snakes[0].death.as_ref().unwrap();
         assert_eq!(death.eliminated_by, "snake-2");
@@ -305,7 +336,7 @@ mod tests {
         });
 
         let death_info: Vec<DeathInfo> = vec![];
-        let frame = game_to_frame(&game, &death_info);
+        let frame = game_to_frame(&game, &death_info, &[]);
 
         assert_eq!(frame.snakes.len(), 2);
         assert_eq!(frame.snakes[0].id, "snake-1");
@@ -318,7 +349,7 @@ mod tests {
         let mut game = create_test_game();
         game.board.food = vec![Position::new(5, 5), Position::new(7, 7)];
 
-        let frame = game_to_frame(&game, &[]);
+        let frame = game_to_frame(&game, &[], &[]);
 
         assert_eq!(frame.food.len(), 2);
         assert_eq!(frame.food[0].x, 5);
@@ -332,7 +363,7 @@ mod tests {
         let mut game = create_test_game();
         game.board.hazards = vec![Position::new(0, 0), Position::new(10, 10)];
 
-        let frame = game_to_frame(&game, &[]);
+        let frame = game_to_frame(&game, &[], &[]);
 
         assert_eq!(frame.hazards.len(), 2);
         assert_eq!(frame.hazards[0].x, 0);
@@ -342,7 +373,7 @@ mod tests {
     #[test]
     fn test_game_to_frame_snake_body_coords() {
         let game = create_test_game();
-        let frame = game_to_frame(&game, &[]);
+        let frame = game_to_frame(&game, &[], &[]);
 
         // Snake body should be converted to FrameCoords
         assert_eq!(frame.snakes[0].body.len(), 3);
@@ -361,7 +392,7 @@ mod tests {
             eliminated_by: "".to_string(),
         }];
 
-        let frame = game_to_frame(&game, &death_info);
+        let frame = game_to_frame(&game, &death_info, &[]);
 
         // Death info is still attached (for replay purposes)
         assert!(frame.snakes[0].death.is_some());
@@ -373,7 +404,7 @@ mod tests {
     #[test]
     fn test_frame_snake_serialization() {
         let game = create_test_game();
-        let frame = game_to_frame(&game, &[]);
+        let frame = game_to_frame(&game, &[], &[]);
 
         let json = serde_json::to_string(&frame).unwrap();
 
@@ -401,6 +432,110 @@ mod tests {
         assert!(json.contains("\"Cause\":\"wall-collision\""));
         assert!(json.contains("\"Turn\":42"));
         assert!(json.contains("\"EliminatedBy\":\"snake-2\""));
+    }
+
+    #[test]
+    fn test_game_to_frame_latency_basic() {
+        use crate::snake_client::MoveResult;
+        use battlesnake_game_types::types::Move;
+
+        let game = create_test_game();
+        let death_info: Vec<DeathInfo> = vec![];
+        let move_results = vec![MoveResult {
+            snake_id: "snake-1".to_string(),
+            direction: Move::Up,
+            latency_ms: Some(42),
+            timed_out: false,
+            shout: None,
+        }];
+
+        let frame = game_to_frame(&game, &death_info, &move_results);
+
+        assert_eq!(frame.snakes[0].latency, "42");
+    }
+
+    #[test]
+    fn test_game_to_frame_latency_timeout() {
+        use crate::snake_client::MoveResult;
+        use battlesnake_game_types::types::Move;
+
+        let game = create_test_game();
+        let death_info: Vec<DeathInfo> = vec![];
+        let move_results = vec![MoveResult {
+            snake_id: "snake-1".to_string(),
+            direction: Move::Up,
+            latency_ms: None,
+            timed_out: true,
+            shout: None,
+        }];
+
+        let frame = game_to_frame(&game, &death_info, &move_results);
+
+        assert_eq!(frame.snakes[0].latency, "timeout");
+    }
+
+    #[test]
+    fn test_game_to_frame_shout_from_move_result() {
+        use crate::snake_client::MoveResult;
+        use battlesnake_game_types::types::Move;
+
+        let game = create_test_game();
+        let death_info: Vec<DeathInfo> = vec![];
+        let move_results = vec![MoveResult {
+            snake_id: "snake-1".to_string(),
+            direction: Move::Up,
+            latency_ms: Some(100),
+            timed_out: false,
+            shout: Some("Hello from move!".to_string()),
+        }];
+
+        let frame = game_to_frame(&game, &death_info, &move_results);
+
+        // Shout from move result should be used
+        assert_eq!(frame.snakes[0].shout, "Hello from move!");
+    }
+
+    #[test]
+    fn test_game_to_frame_fallback_shout() {
+        use crate::snake_client::MoveResult;
+        use battlesnake_game_types::types::Move;
+
+        let game = create_test_game(); // This game has a snake with shout "Hello!"
+        let death_info: Vec<DeathInfo> = vec![];
+        let move_results = vec![MoveResult {
+            snake_id: "snake-1".to_string(),
+            direction: Move::Up,
+            latency_ms: Some(100),
+            timed_out: false,
+            shout: None, // No shout in move result
+        }];
+
+        let frame = game_to_frame(&game, &death_info, &move_results);
+
+        // Should fall back to snake's existing shout
+        assert_eq!(frame.snakes[0].shout, "Hello!");
+    }
+
+    #[test]
+    fn test_game_to_frame_no_matching_latency_result() {
+        use crate::snake_client::MoveResult;
+        use battlesnake_game_types::types::Move;
+
+        let game = create_test_game();
+        let death_info: Vec<DeathInfo> = vec![];
+        // Move result for a different snake
+        let move_results = vec![MoveResult {
+            snake_id: "other-snake".to_string(),
+            direction: Move::Down,
+            latency_ms: Some(50),
+            timed_out: false,
+            shout: None,
+        }];
+
+        let frame = game_to_frame(&game, &death_info, &move_results);
+
+        // Should default to "0" when no matching result
+        assert_eq!(frame.snakes[0].latency, "0");
     }
 
     fn create_test_game() -> Game {

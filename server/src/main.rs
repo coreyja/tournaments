@@ -21,6 +21,7 @@ mod github;
 mod jobs;
 mod models;
 mod routes;
+mod snake_client;
 mod state;
 mod static_assets;
 

@@ -67,9 +67,10 @@ pub async fn get_turns_from(
     Ok(turns)
 }
 
-/// Create a new turn for a game
+/// Create a new turn for a game and notify WebSocket subscribers
 pub async fn create_turn(
     pool: &PgPool,
+    game_channels: &GameChannels,
     game_id: Uuid,
     turn_number: i32,
     frame_data: Option<serde_json::Value>,
@@ -87,19 +88,6 @@ pub async fn create_turn(
     .fetch_one(pool)
     .await
     .wrap_err("Failed to create turn")?;
-
-    Ok(turn)
-}
-
-/// Create a new turn for a game and notify WebSocket subscribers
-pub async fn create_turn_and_notify(
-    pool: &PgPool,
-    game_channels: &GameChannels,
-    game_id: Uuid,
-    turn_number: i32,
-    frame_data: Option<serde_json::Value>,
-) -> cja::Result<Turn> {
-    let turn = create_turn(pool, game_id, turn_number, frame_data).await?;
 
     game_channels
         .notify(TurnNotification {
@@ -140,6 +128,8 @@ pub struct SnakeTurn {
     pub turn_id: Uuid,
     pub game_battlesnake_id: Uuid,
     pub direction: String,
+    pub latency_ms: Option<i32>,
+    pub timed_out: bool,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -149,16 +139,21 @@ pub async fn create_snake_turn(
     turn_id: Uuid,
     game_battlesnake_id: Uuid,
     direction: &str,
+    latency_ms: Option<i64>,
+    timed_out: bool,
 ) -> cja::Result<SnakeTurn> {
+    let latency_i32 = latency_ms.map(|ms| ms as i32);
     let row = sqlx::query!(
         r#"
-        INSERT INTO snake_turns (turn_id, game_battlesnake_id, direction)
-        VALUES ($1, $2, $3)
-        RETURNING snake_turn_id, turn_id, game_battlesnake_id, direction, created_at
+        INSERT INTO snake_turns (turn_id, game_battlesnake_id, direction, latency_ms, timed_out)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING snake_turn_id, turn_id, game_battlesnake_id, direction, latency_ms, timed_out, created_at
         "#,
         turn_id,
         game_battlesnake_id,
-        direction
+        direction,
+        latency_i32,
+        timed_out
     )
     .fetch_one(pool)
     .await
@@ -169,6 +164,8 @@ pub async fn create_snake_turn(
         turn_id: row.turn_id,
         game_battlesnake_id: row.game_battlesnake_id,
         direction: row.direction,
+        latency_ms: row.latency_ms,
+        timed_out: row.timed_out,
         created_at: row.created_at,
     })
 }
@@ -185,6 +182,8 @@ pub async fn get_snake_turns_by_turn_id(
             turn_id,
             game_battlesnake_id,
             direction,
+            latency_ms,
+            timed_out,
             created_at
         FROM snake_turns
         WHERE turn_id = $1
@@ -202,6 +201,8 @@ pub async fn get_snake_turns_by_turn_id(
             turn_id: row.turn_id,
             game_battlesnake_id: row.game_battlesnake_id,
             direction: row.direction,
+            latency_ms: row.latency_ms,
+            timed_out: row.timed_out,
             created_at: row.created_at,
         })
         .collect();
@@ -275,11 +276,15 @@ mod tests {
             turn_id: Uuid::new_v4(),
             game_battlesnake_id: Uuid::new_v4(),
             direction: "up".to_string(),
+            latency_ms: Some(123),
+            timed_out: false,
             created_at: chrono::Utc::now(),
         };
 
         let json = serde_json::to_string(&snake_turn).unwrap();
         assert!(json.contains("\"direction\":\"up\""));
+        assert!(json.contains("\"latency_ms\":123"));
+        assert!(json.contains("\"timed_out\":false"));
     }
 
     #[test]
@@ -290,9 +295,26 @@ mod tests {
                 turn_id: Uuid::new_v4(),
                 game_battlesnake_id: Uuid::new_v4(),
                 direction: direction.to_string(),
+                latency_ms: None,
+                timed_out: false,
                 created_at: chrono::Utc::now(),
             };
             assert_eq!(snake_turn.direction, direction);
         }
+    }
+
+    #[test]
+    fn test_snake_turn_with_timeout() {
+        let snake_turn = SnakeTurn {
+            snake_turn_id: Uuid::new_v4(),
+            turn_id: Uuid::new_v4(),
+            game_battlesnake_id: Uuid::new_v4(),
+            direction: "up".to_string(),
+            latency_ms: None,
+            timed_out: true,
+            created_at: chrono::Utc::now(),
+        };
+        assert!(snake_turn.timed_out);
+        assert!(snake_turn.latency_ms.is_none());
     }
 }

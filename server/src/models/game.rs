@@ -469,18 +469,22 @@ pub async fn update_game_status(
     })
 }
 
-use crate::game_channels::GameChannels;
-
 /// Run a game with turn-by-turn DB persistence and WebSocket notifications
-pub async fn run_game(
-    pool: &PgPool,
-    game_channels: &GameChannels,
-    game_id: Uuid,
-) -> cja::Result<()> {
+///
+/// This function calls the actual snake APIs to get moves, with timeout handling.
+/// On timeout, snakes continue in the same direction as their last move.
+pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja::Result<()> {
     use crate::engine::MAX_TURNS;
     use crate::engine::frame::{DeathInfo, game_to_frame};
-    use battlesnake_game_types::types::{Move, RandomReasonableMovesGame};
-    use rand::SeedableRng;
+    use crate::snake_client::{
+        request_end_parallel, request_moves_parallel, request_start_parallel,
+    };
+    use battlesnake_game_types::types::Move;
+    use std::collections::HashMap;
+
+    let pool = &app_state.db;
+    let game_channels = &app_state.game_channels;
+    let http_client = &app_state.http_client;
 
     tracing::info!(game_id = %game_id, "Starting run_game");
 
@@ -492,7 +496,7 @@ pub async fn run_game(
     // Update status to running
     update_game_status(pool, game_id, GameStatus::Running).await?;
 
-    // Get all the battlesnakes in the game
+    // Get all the battlesnakes in the game with their URLs
     let battlesnakes = crate::models::game_battlesnake::get_battlesnakes_by_game_id(pool, game_id)
         .await
         .wrap_err("Failed to get battlesnakes for game")?;
@@ -501,46 +505,64 @@ pub async fn run_game(
         return Err(cja::color_eyre::eyre::eyre!("No battlesnakes in the game"));
     }
 
+    // Build snake_id -> url mapping
+    let snake_urls: Vec<(String, String)> = battlesnakes
+        .iter()
+        .map(|bs| (bs.battlesnake_id.to_string(), bs.url.clone()))
+        .collect();
+
+    // Build snake_id -> game_battlesnake_id mapping for DB storage
+    let snake_db_ids: HashMap<String, Uuid> = battlesnakes
+        .iter()
+        .map(|bs| (bs.battlesnake_id.to_string(), bs.game_battlesnake_id))
+        .collect();
+
     // Create the initial game state
     let mut engine_game =
         crate::engine::create_initial_game(game_id, game.board_size, game.game_type, &battlesnakes);
 
-    // Use StdRng seeded from game_id for reproducibility and Send safety
-    let mut rng = rand::rngs::StdRng::from_seed({
-        let mut seed = [0u8; 32];
-        seed[..16].copy_from_slice(game_id.as_bytes());
-        seed
-    });
+    // Get timeout from game settings (default 500ms)
+    let timeout = std::time::Duration::from_millis(engine_game.game.timeout as u64);
+
+    // Call /start for all snakes in parallel (fire and forget)
+    tracing::info!(game_id = %game_id, "Calling /start for all snakes");
+    request_start_parallel(http_client, &engine_game, &snake_urls, timeout).await;
+
     let mut death_info: Vec<DeathInfo> = Vec::new();
     let mut elimination_order: Vec<String> = Vec::new();
+    let mut last_moves: HashMap<String, Move> = HashMap::new();
 
     // Helper to check if game is over
     let is_game_over = |g: &battlesnake_game_types::wire_representation::Game| {
         g.board.snakes.iter().filter(|s| s.health > 0).count() <= 1
     };
 
-    // Store turn 0 (initial state)
-    let frame_0 = game_to_frame(&engine_game, &death_info);
+    // Store turn 0 (initial state, no moves yet)
+    let frame_0 = game_to_frame(&engine_game, &death_info, &[]);
     let frame_0_json =
         serde_json::to_value(&frame_0).wrap_err("Failed to serialize initial frame")?;
 
     tracing::info!(game_id = %game_id, "Storing turn 0");
-    crate::models::turn::create_turn_and_notify(
-        pool,
-        game_channels,
-        game_id,
-        0,
-        Some(frame_0_json),
-    )
-    .await?;
+    crate::models::turn::create_turn(pool, game_channels, game_id, 0, Some(frame_0_json)).await?;
     tracing::info!(game_id = %game_id, "Turn 0 stored successfully");
 
     // Run the game turn by turn
     while !is_game_over(&engine_game) && engine_game.turn < MAX_TURNS {
-        // Get random reasonable moves for each alive snake
-        let moves: Vec<(String, Move)> = engine_game
-            .random_reasonable_move_for_each_snake(&mut rng)
+        // Request moves from all alive snakes in parallel
+        let move_results =
+            request_moves_parallel(http_client, &engine_game, &snake_urls, timeout, &last_moves)
+                .await;
+
+        // Convert to move vector for engine
+        let moves: Vec<(String, Move)> = move_results
+            .iter()
+            .map(|r| (r.snake_id.clone(), r.direction))
             .collect();
+
+        // Store last moves for timeout fallback on next turn
+        for result in &move_results {
+            last_moves.insert(result.snake_id.clone(), result.direction);
+        }
 
         // Apply the moves using the engine
         engine_game = crate::engine::apply_turn(engine_game, &moves);
@@ -559,13 +581,13 @@ pub async fn run_game(
             }
         }
 
-        // Store the turn frame and notify subscribers
-        let frame = game_to_frame(&engine_game, &death_info);
+        // Store the turn frame with latency info and notify subscribers
+        let frame = game_to_frame(&engine_game, &death_info, &move_results);
         let frame_json = serde_json::to_value(&frame)
             .wrap_err_with(|| format!("Failed to serialize frame {}", engine_game.turn))?;
 
         tracing::debug!(game_id = %game_id, turn = engine_game.turn, "Storing turn");
-        crate::models::turn::create_turn_and_notify(
+        let turn = crate::models::turn::create_turn(
             pool,
             game_channels,
             game_id,
@@ -573,7 +595,26 @@ pub async fn run_game(
             Some(frame_json),
         )
         .await?;
+
+        // Store individual snake moves with latency
+        for result in &move_results {
+            if let Some(game_battlesnake_id) = snake_db_ids.get(&result.snake_id) {
+                crate::models::turn::create_snake_turn(
+                    pool,
+                    turn.turn_id,
+                    *game_battlesnake_id,
+                    &result.direction.to_string(),
+                    result.latency_ms,
+                    result.timed_out,
+                )
+                .await?;
+            }
+        }
     }
+
+    // Call /end for all snakes in parallel (fire and forget)
+    tracing::info!(game_id = %game_id, "Calling /end for all snakes");
+    request_end_parallel(http_client, &engine_game, &snake_urls, timeout).await;
 
     tracing::info!(
         game_id = %game_id,
