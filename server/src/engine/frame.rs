@@ -81,62 +81,12 @@ impl From<Position> for FrameCoord {
     }
 }
 
-/// Convert a Game state to a frame for the board viewer
-pub fn game_to_frame(game: &Game, death_info: &[DeathInfo]) -> EngineGameFrame {
-    EngineGameFrame {
-        turn: game.turn,
-        snakes: game
-            .board
-            .snakes
-            .iter()
-            .map(|s| {
-                let death = death_info
-                    .iter()
-                    .find(|d| d.snake_id == s.id)
-                    .map(|d| FrameDeath {
-                        cause: d.cause.clone(),
-                        turn: d.turn,
-                        eliminated_by: d.eliminated_by.clone(),
-                    });
-
-                let (eliminated_cause, eliminated_by) = if s.health <= 0 {
-                    death_info
-                        .iter()
-                        .find(|d| d.snake_id == s.id)
-                        .map(|d| (d.cause.clone(), d.eliminated_by.clone()))
-                        .unwrap_or_default()
-                } else {
-                    Default::default()
-                };
-
-                FrameSnake {
-                    id: s.id.clone(),
-                    name: s.name.clone(),
-                    body: body_to_coords(&s.body),
-                    health: s.health,
-                    color: generate_snake_color(&s.id),
-                    head_type: "default".to_string(),
-                    tail_type: "default".to_string(),
-                    latency: "0".to_string(),
-                    shout: s.shout.clone().unwrap_or_default(),
-                    squad: "".to_string(),
-                    api_version: "1".to_string(),
-                    author: "".to_string(),
-                    death,
-                    eliminated_cause,
-                    eliminated_by,
-                }
-            })
-            .collect(),
-        food: game.board.food.iter().map(|p| (*p).into()).collect(),
-        hazards: game.board.hazards.iter().map(|p| (*p).into()).collect(),
-    }
-}
-
 use crate::snake_client::MoveResult;
 
-/// Convert a Game state to a frame for the board viewer, including latency info from move results
-pub fn game_to_frame_with_latency(
+/// Convert a Game state to a frame for the board viewer
+///
+/// Includes latency info from move results when provided.
+pub fn game_to_frame(
     game: &Game,
     death_info: &[DeathInfo],
     move_results: &[MoveResult],
@@ -314,7 +264,7 @@ mod tests {
         let game = create_test_game();
         let death_info: Vec<DeathInfo> = vec![];
 
-        let frame = game_to_frame(&game, &death_info);
+        let frame = game_to_frame(&game, &death_info, &[]);
 
         assert_eq!(frame.turn, 0);
         assert_eq!(frame.snakes.len(), 1);
@@ -338,7 +288,7 @@ mod tests {
             eliminated_by: "".to_string(),
         }];
 
-        let frame = game_to_frame(&game, &death_info);
+        let frame = game_to_frame(&game, &death_info, &[]);
 
         assert_eq!(frame.snakes.len(), 1);
         assert!(frame.snakes[0].death.is_some());
@@ -360,7 +310,7 @@ mod tests {
             eliminated_by: "snake-2".to_string(),
         }];
 
-        let frame = game_to_frame(&game, &death_info);
+        let frame = game_to_frame(&game, &death_info, &[]);
 
         let death = frame.snakes[0].death.as_ref().unwrap();
         assert_eq!(death.eliminated_by, "snake-2");
@@ -386,7 +336,7 @@ mod tests {
         });
 
         let death_info: Vec<DeathInfo> = vec![];
-        let frame = game_to_frame(&game, &death_info);
+        let frame = game_to_frame(&game, &death_info, &[]);
 
         assert_eq!(frame.snakes.len(), 2);
         assert_eq!(frame.snakes[0].id, "snake-1");
@@ -399,7 +349,7 @@ mod tests {
         let mut game = create_test_game();
         game.board.food = vec![Position::new(5, 5), Position::new(7, 7)];
 
-        let frame = game_to_frame(&game, &[]);
+        let frame = game_to_frame(&game, &[], &[]);
 
         assert_eq!(frame.food.len(), 2);
         assert_eq!(frame.food[0].x, 5);
@@ -413,7 +363,7 @@ mod tests {
         let mut game = create_test_game();
         game.board.hazards = vec![Position::new(0, 0), Position::new(10, 10)];
 
-        let frame = game_to_frame(&game, &[]);
+        let frame = game_to_frame(&game, &[], &[]);
 
         assert_eq!(frame.hazards.len(), 2);
         assert_eq!(frame.hazards[0].x, 0);
@@ -423,7 +373,7 @@ mod tests {
     #[test]
     fn test_game_to_frame_snake_body_coords() {
         let game = create_test_game();
-        let frame = game_to_frame(&game, &[]);
+        let frame = game_to_frame(&game, &[], &[]);
 
         // Snake body should be converted to FrameCoords
         assert_eq!(frame.snakes[0].body.len(), 3);
@@ -442,7 +392,7 @@ mod tests {
             eliminated_by: "".to_string(),
         }];
 
-        let frame = game_to_frame(&game, &death_info);
+        let frame = game_to_frame(&game, &death_info, &[]);
 
         // Death info is still attached (for replay purposes)
         assert!(frame.snakes[0].death.is_some());
@@ -454,7 +404,7 @@ mod tests {
     #[test]
     fn test_frame_snake_serialization() {
         let game = create_test_game();
-        let frame = game_to_frame(&game, &[]);
+        let frame = game_to_frame(&game, &[], &[]);
 
         let json = serde_json::to_string(&frame).unwrap();
 
@@ -485,7 +435,7 @@ mod tests {
     }
 
     #[test]
-    fn test_game_to_frame_with_latency_basic() {
+    fn test_game_to_frame_latency_basic() {
         use crate::snake_client::MoveResult;
         use battlesnake_game_types::types::Move;
 
@@ -499,13 +449,13 @@ mod tests {
             shout: None,
         }];
 
-        let frame = game_to_frame_with_latency(&game, &death_info, &move_results);
+        let frame = game_to_frame(&game, &death_info, &move_results);
 
         assert_eq!(frame.snakes[0].latency, "42");
     }
 
     #[test]
-    fn test_game_to_frame_with_latency_timeout() {
+    fn test_game_to_frame_latency_timeout() {
         use crate::snake_client::MoveResult;
         use battlesnake_game_types::types::Move;
 
@@ -519,13 +469,13 @@ mod tests {
             shout: None,
         }];
 
-        let frame = game_to_frame_with_latency(&game, &death_info, &move_results);
+        let frame = game_to_frame(&game, &death_info, &move_results);
 
         assert_eq!(frame.snakes[0].latency, "timeout");
     }
 
     #[test]
-    fn test_game_to_frame_with_latency_shout_from_move_result() {
+    fn test_game_to_frame_shout_from_move_result() {
         use crate::snake_client::MoveResult;
         use battlesnake_game_types::types::Move;
 
@@ -539,14 +489,14 @@ mod tests {
             shout: Some("Hello from move!".to_string()),
         }];
 
-        let frame = game_to_frame_with_latency(&game, &death_info, &move_results);
+        let frame = game_to_frame(&game, &death_info, &move_results);
 
         // Shout from move result should be used
         assert_eq!(frame.snakes[0].shout, "Hello from move!");
     }
 
     #[test]
-    fn test_game_to_frame_with_latency_fallback_shout() {
+    fn test_game_to_frame_fallback_shout() {
         use crate::snake_client::MoveResult;
         use battlesnake_game_types::types::Move;
 
@@ -560,14 +510,14 @@ mod tests {
             shout: None, // No shout in move result
         }];
 
-        let frame = game_to_frame_with_latency(&game, &death_info, &move_results);
+        let frame = game_to_frame(&game, &death_info, &move_results);
 
         // Should fall back to snake's existing shout
         assert_eq!(frame.snakes[0].shout, "Hello!");
     }
 
     #[test]
-    fn test_game_to_frame_with_latency_no_matching_result() {
+    fn test_game_to_frame_no_matching_latency_result() {
         use crate::snake_client::MoveResult;
         use battlesnake_game_types::types::Move;
 
@@ -582,7 +532,7 @@ mod tests {
             shout: None,
         }];
 
-        let frame = game_to_frame_with_latency(&game, &death_info, &move_results);
+        let frame = game_to_frame(&game, &death_info, &move_results);
 
         // Should default to "0" when no matching result
         assert_eq!(frame.snakes[0].latency, "0");

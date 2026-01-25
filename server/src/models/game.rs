@@ -475,7 +475,7 @@ pub async fn update_game_status(
 /// On timeout, snakes continue in the same direction as their last move.
 pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja::Result<()> {
     use crate::engine::MAX_TURNS;
-    use crate::engine::frame::{DeathInfo, game_to_frame, game_to_frame_with_latency};
+    use crate::engine::frame::{DeathInfo, game_to_frame};
     use crate::snake_client::{
         request_end_parallel, request_moves_parallel, request_start_parallel,
     };
@@ -537,8 +537,8 @@ pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja:
         g.board.snakes.iter().filter(|s| s.health > 0).count() <= 1
     };
 
-    // Store turn 0 (initial state)
-    let frame_0 = game_to_frame(&engine_game, &death_info);
+    // Store turn 0 (initial state, no moves yet)
+    let frame_0 = game_to_frame(&engine_game, &death_info, &[]);
     let frame_0_json =
         serde_json::to_value(&frame_0).wrap_err("Failed to serialize initial frame")?;
 
@@ -589,7 +589,7 @@ pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja:
         }
 
         // Store the turn frame with latency info and notify subscribers
-        let frame = game_to_frame_with_latency(&engine_game, &death_info, &move_results);
+        let frame = game_to_frame(&engine_game, &death_info, &move_results);
         let frame_json = serde_json::to_value(&frame)
             .wrap_err_with(|| format!("Failed to serialize frame {}", engine_game.turn))?;
 
