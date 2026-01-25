@@ -609,7 +609,7 @@ pub async fn run_game(
         // Store individual snake moves with latency
         for result in &move_results {
             if let Some(game_battlesnake_id) = snake_db_ids.get(&result.snake_id) {
-                crate::models::turn::create_snake_turn_with_latency(
+                crate::models::turn::create_snake_turn(
                     pool,
                     turn.turn_id,
                     *game_battlesnake_id,

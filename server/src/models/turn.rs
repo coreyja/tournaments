@@ -145,18 +145,8 @@ pub struct SnakeTurn {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
-/// Create a snake turn record (without latency - for backwards compatibility)
+/// Create a snake turn record
 pub async fn create_snake_turn(
-    pool: &PgPool,
-    turn_id: Uuid,
-    game_battlesnake_id: Uuid,
-    direction: &str,
-) -> cja::Result<SnakeTurn> {
-    create_snake_turn_with_latency(pool, turn_id, game_battlesnake_id, direction, None, false).await
-}
-
-/// Create a snake turn record with latency information
-pub async fn create_snake_turn_with_latency(
     pool: &PgPool,
     turn_id: Uuid,
     game_battlesnake_id: Uuid,
