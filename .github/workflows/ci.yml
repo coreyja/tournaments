@@ -23,9 +23,19 @@ jobs:
   e2e:
     uses: ./.github/workflows/e2e.yml
 
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t arena-test .
+
   deploy:
     name: Deploy to Cloud Run
-    needs: [rustfmt, clippy, rust-tests, e2e]
+    needs: [rustfmt, clippy, rust-tests, e2e, docker-build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
