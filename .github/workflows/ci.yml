@@ -23,9 +23,31 @@ jobs:
   e2e:
     uses: ./.github/workflows/e2e.yml
 
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t arena:${{ github.sha }} .
+
+      - name: Save Docker image
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: docker save arena:${{ github.sha }} | zstd -o arena-image.tar.zst
+
+      - name: Upload Docker image artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: arena-image.tar.zst
+          retention-days: 1
+
   deploy:
     name: Deploy to Cloud Run
-    needs: [rustfmt, clippy, rust-tests, e2e]
+    needs: [rustfmt, clippy, rust-tests, e2e, docker-build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -33,8 +55,13 @@ jobs:
       id-token: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Docker image
+        run: zstd -d arena-image.tar.zst -o arena-image.tar && docker load -i arena-image.tar
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -48,14 +75,10 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
-      - name: Build Docker image
+      - name: Tag and push Docker image
         run: |
-          docker build -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REGISTRY }}/arena:${{ github.sha }} .
-          docker tag ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REGISTRY }}/arena:${{ github.sha }} \
-                     ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REGISTRY }}/arena:latest
-
-      - name: Push Docker image
-        run: |
+          docker tag arena:${{ github.sha }} ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REGISTRY }}/arena:${{ github.sha }}
+          docker tag arena:${{ github.sha }} ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REGISTRY }}/arena:latest
           docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REGISTRY }}/arena:${{ github.sha }}
           docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REGISTRY }}/arena:latest
 

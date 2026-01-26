@@ -18,8 +18,14 @@ COPY server/build.rs ./server/
 COPY mock-github-oauth/Cargo.toml ./mock-github-oauth/
 
 # Create dummy files for dependency caching
-RUN mkdir -p server/src mock-github-oauth/src && \
+# Note: arena has both lib.rs and main.rs, plus bin/arena-cli.rs
+# The dummy lib.rs needs cli::config module stub since arena-cli imports it
+RUN mkdir -p server/src/bin server/src/cli mock-github-oauth/src && \
     echo "fn main() {}" > server/src/main.rs && \
+    echo "pub mod cli;" > server/src/lib.rs && \
+    echo "pub mod config;" > server/src/cli/mod.rs && \
+    echo "pub struct AuthConfig { pub token: Option<String> } pub struct CliConfig { pub auth: Option<AuthConfig> } impl CliConfig { pub fn load() -> color_eyre::Result<Self> { todo!() } pub fn api_url(&self) -> &str { todo!() } pub fn save(&self) -> color_eyre::Result<()> { todo!() } }" > server/src/cli/config.rs && \
+    echo "fn main() {}" > server/src/bin/arena-cli.rs && \
     echo "fn main() {}" > mock-github-oauth/src/main.rs && \
     echo "" > mock-github-oauth/src/lib.rs
 
