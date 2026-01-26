@@ -9,9 +9,7 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::{
-    models::battlesnake::{
-        self, Battlesnake, CreateBattlesnake, UpdateBattlesnake, Visibility,
-    },
+    models::battlesnake::{self, Battlesnake, CreateBattlesnake, UpdateBattlesnake, Visibility},
     routes::auth::ApiUser,
     state::AppState,
 };
@@ -117,7 +115,10 @@ pub async fn create_snake(
             if msg.contains("already have a battlesnake named") {
                 (StatusCode::CONFLICT, msg)
             } else {
-                (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create snake".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to create snake".to_string(),
+                )
             }
         })?;
 
@@ -158,7 +159,10 @@ pub async fn update_snake(
         .await
         .map_err(|e| {
             tracing::error!("Failed to get snake: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get snake".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to get snake".to_string(),
+            )
         })?
         .ok_or((StatusCode::NOT_FOUND, "Snake not found".to_string()))?;
 
@@ -193,7 +197,10 @@ pub async fn update_snake(
             if msg.contains("already have a battlesnake named") {
                 (StatusCode::CONFLICT, msg)
             } else {
-                (StatusCode::INTERNAL_SERVER_ERROR, "Failed to update snake".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to update snake".to_string(),
+                )
             }
         })?;
 
