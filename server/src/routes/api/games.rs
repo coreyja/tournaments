@@ -150,23 +150,34 @@ pub async fn create_game(
     Json(request): Json<CreateGameRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     // Parse board size
-    let board_size = parse_board_size(&request.board).map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+    let board_size =
+        parse_board_size(&request.board).map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
 
     // Parse game type
-    let game_type = parse_game_type(&request.game_type).map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+    let game_type = parse_game_type(&request.game_type)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
 
     // Validate snake count
     if request.snakes.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "At least one snake is required".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "At least one snake is required".to_string(),
+        ));
     }
     if request.snakes.len() > 4 {
-        return Err((StatusCode::BAD_REQUEST, "Maximum of 4 snakes allowed".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Maximum of 4 snakes allowed".to_string(),
+        ));
     }
 
     // Check for duplicates
     let unique_snakes: HashSet<_> = request.snakes.iter().collect();
     if unique_snakes.len() != request.snakes.len() {
-        return Err((StatusCode::BAD_REQUEST, "Duplicate snake IDs are not allowed".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Duplicate snake IDs are not allowed".to_string(),
+        ));
     }
 
     // Validate that all snakes exist and are accessible to the user
@@ -185,7 +196,10 @@ pub async fn create_game(
     .await
     .map_err(|e| {
         tracing::error!("Failed to validate snakes: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal server error".to_string(),
+        )
     })?;
 
     // Check if all requested snakes were found and accessible
@@ -210,23 +224,25 @@ pub async fn create_game(
         .await
         .map_err(|e| {
             tracing::error!("Failed to create game: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create game".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to create game".to_string(),
+            )
         })?;
 
     // Enqueue the game runner job
     let job = GameRunnerJob {
         game_id: game.game_id,
     };
-    cja::jobs::Job::enqueue(
-        job,
-        state,
-        format!("Game {} created via API", game.game_id),
-    )
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to enqueue game runner job: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, "Failed to start game".to_string())
-    })?;
+    cja::jobs::Job::enqueue(job, state, format!("Game {} created via API", game.game_id))
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to enqueue game runner job: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to start game".to_string(),
+            )
+        })?;
 
     Ok((
         StatusCode::CREATED,
@@ -261,11 +277,17 @@ pub async fn list_games(
         .await
         .map_err(|e| {
             tracing::error!("Failed to validate snake: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            )
         })?;
 
         if accessible.is_none() {
-            return Err((StatusCode::BAD_REQUEST, "Snake not found or not accessible".to_string()));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Snake not found or not accessible".to_string(),
+            ));
         }
     }
 
@@ -351,8 +373,15 @@ pub async fn list_games(
         let battlesnakes = game_battlesnake::get_battlesnakes_by_game_id(&state.db, game.game_id)
             .await
             .map_err(|e| {
-                tracing::error!("Failed to get battlesnakes for game {}: {}", game.game_id, e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                tracing::error!(
+                    "Failed to get battlesnakes for game {}: {}",
+                    game.game_id,
+                    e
+                );
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
             })?;
         response.push(build_game_list_item(game, &battlesnakes));
     }
@@ -371,7 +400,10 @@ pub async fn show_game(
         .await
         .map_err(|e| {
             tracing::error!("Failed to get game: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            )
         })?
         .ok_or((StatusCode::NOT_FOUND, "Game not found".to_string()))?;
 
@@ -380,7 +412,10 @@ pub async fn show_game(
         .await
         .map_err(|e| {
             tracing::error!("Failed to get battlesnakes: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            )
         })?;
 
     // Fetch all turns
@@ -388,14 +423,14 @@ pub async fn show_game(
         .await
         .map_err(|e| {
             tracing::error!("Failed to get turns: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            )
         })?;
 
     // Extract frames from turns
-    let frames: Vec<serde_json::Value> = turns
-        .into_iter()
-        .filter_map(|t| t.frame_data)
-        .collect();
+    let frames: Vec<serde_json::Value> = turns.into_iter().filter_map(|t| t.frame_data).collect();
 
     // Find winner
     let winner = battlesnakes
@@ -427,22 +462,43 @@ mod tests {
     #[test]
     fn test_parse_game_type() {
         // Standard cases
-        assert!(matches!(parse_game_type("standard"), Ok(GameType::Standard)));
-        assert!(matches!(parse_game_type("Standard"), Ok(GameType::Standard)));
-        assert!(matches!(parse_game_type("STANDARD"), Ok(GameType::Standard)));
+        assert!(matches!(
+            parse_game_type("standard"),
+            Ok(GameType::Standard)
+        ));
+        assert!(matches!(
+            parse_game_type("Standard"),
+            Ok(GameType::Standard)
+        ));
+        assert!(matches!(
+            parse_game_type("STANDARD"),
+            Ok(GameType::Standard)
+        ));
 
         // Royale
         assert!(matches!(parse_game_type("royale"), Ok(GameType::Royale)));
         assert!(matches!(parse_game_type("Royale"), Ok(GameType::Royale)));
 
         // Constrictor
-        assert!(matches!(parse_game_type("constrictor"), Ok(GameType::Constrictor)));
+        assert!(matches!(
+            parse_game_type("constrictor"),
+            Ok(GameType::Constrictor)
+        ));
 
         // Snail mode variants
         assert!(matches!(parse_game_type("snail"), Ok(GameType::SnailMode)));
-        assert!(matches!(parse_game_type("snailmode"), Ok(GameType::SnailMode)));
-        assert!(matches!(parse_game_type("snail_mode"), Ok(GameType::SnailMode)));
-        assert!(matches!(parse_game_type("Snail Mode"), Ok(GameType::SnailMode)));
+        assert!(matches!(
+            parse_game_type("snailmode"),
+            Ok(GameType::SnailMode)
+        ));
+        assert!(matches!(
+            parse_game_type("snail_mode"),
+            Ok(GameType::SnailMode)
+        ));
+        assert!(matches!(
+            parse_game_type("Snail Mode"),
+            Ok(GameType::SnailMode)
+        ));
 
         // Invalid
         assert!(parse_game_type("invalid").is_err());
@@ -451,8 +507,14 @@ mod tests {
     #[test]
     fn test_parse_board_size() {
         assert!(matches!(parse_board_size("7x7"), Ok(GameBoardSize::Small)));
-        assert!(matches!(parse_board_size("11x11"), Ok(GameBoardSize::Medium)));
-        assert!(matches!(parse_board_size("19x19"), Ok(GameBoardSize::Large)));
+        assert!(matches!(
+            parse_board_size("11x11"),
+            Ok(GameBoardSize::Medium)
+        ));
+        assert!(matches!(
+            parse_board_size("19x19"),
+            Ok(GameBoardSize::Large)
+        ));
 
         // Invalid
         assert!(parse_board_size("10x10").is_err());
