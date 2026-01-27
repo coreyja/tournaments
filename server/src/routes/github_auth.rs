@@ -4,16 +4,20 @@ use axum::{
     response::{IntoResponse, Redirect},
 };
 use color_eyre::eyre::{Context as _, eyre};
+use maud::html;
 use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT};
+use serde::Deserialize;
 
 use crate::{
+    components::page_factory::PageFactory,
     errors::{ServerError, ServerResult},
     flasher::Flasher,
     github::auth::{GitHubAuthParams, GitHubTokenResponse, GitHubUser},
     models::{
+        api_token,
         session::{
             associate_user_with_session, clear_github_oauth_state, disassociate_user_from_session,
-            set_github_oauth_state,
+            set_github_oauth_state_with_cli,
         },
         user::create_or_update_user,
     },
@@ -22,10 +26,19 @@ use crate::{
 
 use super::auth::CurrentSession;
 
+/// Query parameters for initiating GitHub OAuth
+#[derive(Debug, Deserialize)]
+pub struct GitHubAuthQuery {
+    /// If true, this is a CLI authentication request
+    #[serde(default)]
+    pub cli: bool,
+}
+
 // Route handler for initiating GitHub OAuth flow
 pub async fn github_auth(
     State(state): State<AppState>,
     current_session: CurrentSession,
+    Query(query): Query<GitHubAuthQuery>,
 ) -> ServerResult<Redirect, StatusCode> {
     // Check if OAuth is configured
     let oauth_config = state.github_oauth_config.as_ref().ok_or_else(|| {
@@ -38,11 +51,12 @@ pub async fn github_auth(
     // Generate a random state for CSRF protection
     let oauth_state = format!("{}", uuid::Uuid::new_v4());
 
-    // Store the state in the session
-    set_github_oauth_state(
+    // Store the state in the session along with CLI auth flag
+    set_github_oauth_state_with_cli(
         &state.db,
         current_session.session.session_id,
         oauth_state.clone(),
+        query.cli,
     )
     .await
     .wrap_err("Failed to store OAuth state in session")?;
@@ -94,6 +108,9 @@ pub async fn github_auth_callback(
             StatusCode::BAD_REQUEST,
         ));
     }
+
+    // Check if this is a CLI authentication request
+    let is_cli_auth = current_session.session.is_cli_auth;
 
     // Clear the state from the session since it's no longer needed
     clear_github_oauth_state(&state.db, current_session.session.session_id)
@@ -151,6 +168,19 @@ pub async fn github_auth_callback(
         .await
         .wrap_err("Failed to associate user with session")?;
 
+    // If CLI auth, create an API token and redirect to the token display page
+    if is_cli_auth {
+        let new_token = api_token::create_api_token(&state.db, user.user_id, "arena-cli")
+            .await
+            .wrap_err("Failed to create API token for CLI")?;
+
+        // Redirect to the CLI token display page with the token as a query param
+        return Ok(Redirect::to(&format!(
+            "/auth/cli-token?token={}",
+            new_token.secret
+        )));
+    }
+
     // Redirect to home page with success message
     flasher
         .add_flash("Successfully logged in with GitHub!")
@@ -175,4 +205,50 @@ pub async fn logout(
     }
 
     Redirect::to("/")
+}
+
+/// Query parameters for CLI token display
+#[derive(Debug, Deserialize)]
+pub struct CliTokenQuery {
+    pub token: String,
+}
+
+/// Route handler for displaying CLI token after OAuth
+pub async fn cli_token_page(
+    Query(query): Query<CliTokenQuery>,
+    page_factory: PageFactory,
+) -> impl IntoResponse {
+    page_factory.create_page(
+        "CLI Authentication Complete".to_string(),
+        Box::new(html! {
+            div style="max-width: 600px; margin: 40px auto; padding: 20px;" {
+                h1 { "CLI Authentication Successful" }
+
+                div class="alert alert-success" style="margin: 20px 0;" {
+                    "You have successfully authenticated with GitHub!"
+                }
+
+                div style="background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 20px 0;" {
+                    h3 style="margin-top: 0;" { "Your API Token" }
+                    p style="color: #666; margin-bottom: 10px;" {
+                        "Copy this token and paste it into the CLI when prompted:"
+                    }
+
+                    div style="background: #fff; border: 1px solid #ccc; border-radius: 4px; padding: 15px; font-family: monospace; word-break: break-all; font-size: 14px;" {
+                        (query.token)
+                    }
+
+                    p style="color: #856404; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 10px; margin-top: 15px;" {
+                        strong { "Important: " }
+                        "This token will only be shown once. Make sure to copy it now!"
+                    }
+                }
+
+                div style="margin-top: 20px;" {
+                    p { "You can close this browser tab and return to the CLI." }
+                    a href="/" class="btn btn-secondary" { "Go to Home" }
+                }
+            }
+        }),
+    )
 }
