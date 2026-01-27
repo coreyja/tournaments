@@ -13,6 +13,7 @@ pub struct Session {
     pub github_oauth_state: Option<String>,
     pub flash_message: Option<String>,
     pub flash_type: Option<String>,
+    pub is_cli_auth: bool,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
     pub expires_at: chrono::DateTime<chrono::Utc>,
@@ -59,6 +60,7 @@ pub async fn create_session(pool: &PgPool) -> cja::Result<Session> {
             github_oauth_state,
             flash_message,
             flash_type,
+            is_cli_auth,
             created_at,
             updated_at,
             expires_at
@@ -86,6 +88,7 @@ pub async fn get_active_session_by_id(
             github_oauth_state,
             flash_message,
             flash_type,
+            is_cli_auth,
             created_at,
             updated_at,
             expires_at
@@ -124,6 +127,7 @@ pub async fn set_flash_message(
             github_oauth_state,
             flash_message,
             flash_type,
+            is_cli_auth,
             created_at,
             updated_at,
             expires_at
@@ -155,6 +159,7 @@ pub async fn clear_flash_message(pool: &PgPool, session_id: Uuid) -> cja::Result
             github_oauth_state,
             flash_message,
             flash_type,
+            is_cli_auth,
             created_at,
             updated_at,
             expires_at
@@ -181,6 +186,7 @@ pub async fn get_session_with_user(
             s.github_oauth_state,
             s.flash_message,
             s.flash_type,
+            s.is_cli_auth,
             s.created_at,
             s.updated_at,
             s.expires_at,
@@ -212,6 +218,7 @@ pub async fn get_session_with_user(
                 github_oauth_state: row.github_oauth_state,
                 flash_message: row.flash_message,
                 flash_type: row.flash_type,
+                is_cli_auth: row.is_cli_auth,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
                 expires_at: row.expires_at,
@@ -271,6 +278,7 @@ pub async fn set_github_oauth_state(
             github_oauth_state,
             flash_message,
             flash_type,
+            is_cli_auth,
             created_at,
             updated_at,
             expires_at
@@ -285,14 +293,20 @@ pub async fn set_github_oauth_state(
     Ok(session)
 }
 
-/// Clear GitHub OAuth state for a session
-pub async fn clear_github_oauth_state(pool: &PgPool, session_id: Uuid) -> cja::Result<Session> {
+/// Set GitHub OAuth state and CLI auth flag for a session
+pub async fn set_github_oauth_state_with_cli(
+    pool: &PgPool,
+    session_id: Uuid,
+    oauth_state: String,
+    is_cli_auth: bool,
+) -> cja::Result<Session> {
     let session = sqlx::query_as!(
         Session,
         r#"
         UPDATE sessions
         SET
-            github_oauth_state = NULL
+            github_oauth_state = $2,
+            is_cli_auth = $3
         WHERE session_id = $1
         RETURNING
             session_id,
@@ -300,6 +314,39 @@ pub async fn clear_github_oauth_state(pool: &PgPool, session_id: Uuid) -> cja::R
             github_oauth_state,
             flash_message,
             flash_type,
+            is_cli_auth,
+            created_at,
+            updated_at,
+            expires_at
+        "#,
+        session_id,
+        oauth_state,
+        is_cli_auth
+    )
+    .fetch_one(pool)
+    .await
+    .wrap_err("Failed to set GitHub OAuth state for session")?;
+
+    Ok(session)
+}
+
+/// Clear GitHub OAuth state for a session (also resets is_cli_auth)
+pub async fn clear_github_oauth_state(pool: &PgPool, session_id: Uuid) -> cja::Result<Session> {
+    let session = sqlx::query_as!(
+        Session,
+        r#"
+        UPDATE sessions
+        SET
+            github_oauth_state = NULL,
+            is_cli_auth = FALSE
+        WHERE session_id = $1
+        RETURNING
+            session_id,
+            user_id,
+            github_oauth_state,
+            flash_message,
+            flash_type,
+            is_cli_auth,
             created_at,
             updated_at,
             expires_at
@@ -334,6 +381,7 @@ pub async fn associate_user_with_session(
             github_oauth_state,
             flash_message,
             flash_type,
+            is_cli_auth,
             created_at,
             updated_at,
             expires_at
@@ -360,6 +408,7 @@ pub async fn disassociate_user_from_session(
         SET
             user_id = NULL,
             github_oauth_state = NULL,
+            is_cli_auth = FALSE,
             expires_at = NOW() + INTERVAL '1 hour'
         WHERE session_id = $1
         RETURNING
@@ -368,6 +417,7 @@ pub async fn disassociate_user_from_session(
             github_oauth_state,
             flash_message,
             flash_type,
+            is_cli_auth,
             created_at,
             updated_at,
             expires_at
@@ -396,6 +446,7 @@ pub async fn refresh_session(pool: &PgPool, session_id: Uuid) -> cja::Result<Ses
             github_oauth_state,
             flash_message,
             flash_type,
+            is_cli_auth,
             created_at,
             updated_at,
             expires_at

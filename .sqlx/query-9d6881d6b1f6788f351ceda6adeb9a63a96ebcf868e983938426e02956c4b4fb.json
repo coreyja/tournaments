@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE sessions\n        SET\n            expires_at = GREATEST(expires_at, NOW() + INTERVAL '30 days')\n        WHERE session_id = $1\n        RETURNING\n            session_id,\n            user_id,\n            github_oauth_state,\n            flash_message,\n            flash_type,\n            created_at,\n            updated_at,\n            expires_at\n        ",
+  "query": "\n        UPDATE sessions\n        SET\n            github_oauth_state = NULL,\n            is_cli_auth = FALSE\n        WHERE session_id = $1\n        RETURNING\n            session_id,\n            user_id,\n            github_oauth_state,\n            flash_message,\n            flash_type,\n            is_cli_auth,\n            created_at,\n            updated_at,\n            expires_at\n        ",
   "describe": {
     "columns": [
       {
@@ -30,16 +30,21 @@
       },
       {
         "ordinal": 5,
+        "name": "is_cli_auth",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "expires_at",
         "type_info": "Timestamptz"
       }
@@ -57,8 +62,9 @@
       true,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "1b261132d1b1bb502e79f95d13aa947e9bd6f01f8da3d699128fdc666970ebe5"
+  "hash": "9d6881d6b1f6788f351ceda6adeb9a63a96ebcf868e983938426e02956c4b4fb"
 }

@@ -50,6 +50,7 @@ pub fn routes(app_state: AppState) -> axum::Router {
             get(github_auth::github_auth_callback),
         )
         .route("/auth/logout", get(github_auth::logout))
+        .route("/auth/cli-token", get(github_auth::cli_token_page))
         // Battlesnake routes
         .route("/battlesnakes", get(battlesnake::list_battlesnakes))
         .route("/battlesnakes/new", get(battlesnake::new_battlesnake))
