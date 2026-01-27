@@ -36,6 +36,10 @@ pub fn routes(app_state: AppState) -> axum::Router {
         .route("/snakes/{id}", get(api::snakes::get_snake))
         .route("/snakes/{id}", put(api::snakes::update_snake))
         .route("/snakes/{id}", delete(api::snakes::delete_snake))
+        // Games API endpoints (list, create, details)
+        .route("/games", post(api::games::create_game))
+        .route("/games", get(api::games::list_games))
+        .route("/games/{id}/details", get(api::games::show_game))
         .layer(cors);
 
     axum::Router::new()

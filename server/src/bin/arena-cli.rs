@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::{Context as _, eyre};
+use std::time::Duration;
 
 // Include the cli module from the library
 use arena::cli::config::{AuthConfig, CliConfig};
@@ -23,6 +24,11 @@ enum Commands {
     Snakes {
         #[command(subcommand)]
         command: SnakesCommands,
+    },
+    /// Game management commands
+    Games {
+        #[command(subcommand)]
+        command: GamesCommands,
     },
 }
 
@@ -99,6 +105,44 @@ enum SnakesCommands {
     },
 }
 
+#[derive(Subcommand)]
+enum GamesCommands {
+    /// List your games
+    List {
+        /// Filter by snake ID
+        #[arg(long)]
+        snake: Option<String>,
+        /// Maximum number of games to return
+        #[arg(long, default_value = "20")]
+        limit: u32,
+    },
+    /// Create a new game
+    Create {
+        /// Comma-separated snake IDs (required)
+        #[arg(long)]
+        snakes: String,
+        /// Board size (7x7, 11x11, 19x19)
+        #[arg(long, default_value = "11x11")]
+        board: String,
+        /// Game type (standard, royale, constrictor, snail)
+        #[arg(long = "type", default_value = "standard")]
+        game_type: String,
+    },
+    /// Show game details
+    Show {
+        /// Game ID
+        id: String,
+    },
+    /// Watch a game
+    Watch {
+        /// Game ID
+        id: String,
+        /// Open in browser instead of polling
+        #[arg(long)]
+        web: bool,
+    },
+}
+
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
@@ -108,6 +152,7 @@ async fn main() -> color_eyre::Result<()> {
     match cli.command {
         Commands::Auth { command } => handle_auth_command(command).await?,
         Commands::Snakes { command } => handle_snakes_command(command).await?,
+        Commands::Games { command } => handle_games_command(command).await?,
     }
 
     Ok(())
@@ -410,5 +455,132 @@ fn logout() -> color_eyre::Result<()> {
     config.auth = None;
     config.save()?;
     println!("Logged out successfully.");
+    Ok(())
+}
+
+async fn handle_games_command(command: GamesCommands) -> color_eyre::Result<()> {
+    let config = CliConfig::load()?;
+    let token = config
+        .auth
+        .as_ref()
+        .and_then(|a| a.token.as_ref())
+        .ok_or_else(|| eyre!("Not logged in. Run 'arena auth login' first."))?;
+
+    let client = reqwest::Client::new();
+    let base_url = config.api_url();
+
+    match command {
+        GamesCommands::List { snake, limit } => {
+            let mut url = format!("{}/api/games?limit={}", base_url, limit);
+            if let Some(snake_id) = snake {
+                url.push_str(&format!("&snake_id={}", snake_id));
+            }
+
+            let response = client
+                .get(&url)
+                .bearer_auth(token)
+                .send()
+                .await
+                .wrap_err("Failed to list games")?;
+
+            if !response.status().is_success() {
+                let status = response.status();
+                let body = response.text().await.unwrap_or_default();
+                return Err(eyre!("Failed to list games: {} - {}", status, body));
+            }
+
+            let games: Vec<serde_json::Value> = response.json().await?;
+            println!("{}", serde_json::to_string_pretty(&games)?);
+        }
+        GamesCommands::Create {
+            snakes,
+            board,
+            game_type,
+        } => {
+            // Parse comma-separated snake IDs
+            let snake_ids: Vec<&str> = snakes.split(',').map(|s| s.trim()).collect();
+
+            let response = client
+                .post(format!("{}/api/games", base_url))
+                .bearer_auth(token)
+                .json(&serde_json::json!({
+                    "snakes": snake_ids,
+                    "board": board,
+                    "game_type": game_type
+                }))
+                .send()
+                .await
+                .wrap_err("Failed to create game")?;
+
+            if !response.status().is_success() {
+                let status = response.status();
+                let body = response.text().await.unwrap_or_default();
+                return Err(eyre!("Failed to create game: {} - {}", status, body));
+            }
+
+            let game: serde_json::Value = response.json().await?;
+            println!("{}", serde_json::to_string_pretty(&game)?);
+        }
+        GamesCommands::Show { id } => {
+            let response = client
+                .get(format!("{}/api/games/{}/details", base_url, id))
+                .bearer_auth(token)
+                .send()
+                .await
+                .wrap_err("Failed to get game")?;
+
+            if response.status() == reqwest::StatusCode::NOT_FOUND {
+                return Err(eyre!("Game not found."));
+            } else if !response.status().is_success() {
+                let status = response.status();
+                let body = response.text().await.unwrap_or_default();
+                return Err(eyre!("Failed to get game: {} - {}", status, body));
+            }
+
+            let game: serde_json::Value = response.json().await?;
+            println!("{}", serde_json::to_string_pretty(&game)?);
+        }
+        GamesCommands::Watch { id, web } => {
+            if web {
+                // Open in browser
+                let url = format!("{}/games/{}", base_url, id);
+                println!("Opening game in browser...");
+                open::that(&url).wrap_err("Failed to open browser")?;
+            } else {
+                // Poll loop
+                loop {
+                    let response = client
+                        .get(format!("{}/api/games/{}/details", base_url, id))
+                        .bearer_auth(token)
+                        .send()
+                        .await
+                        .wrap_err("Failed to get game")?;
+
+                    if response.status() == reqwest::StatusCode::NOT_FOUND {
+                        return Err(eyre!("Game not found."));
+                    } else if !response.status().is_success() {
+                        let status = response.status();
+                        let body = response.text().await.unwrap_or_default();
+                        return Err(eyre!("Failed to get game: {} - {}", status, body));
+                    }
+
+                    let game: serde_json::Value = response.json().await?;
+
+                    // Clear screen and print current state
+                    print!("\x1B[2J\x1B[1;1H");
+                    println!("{}", serde_json::to_string_pretty(&game)?);
+
+                    // Check if game is finished
+                    if game["status"] == "finished" {
+                        println!("\nGame finished!");
+                        break;
+                    }
+
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                }
+            }
+        }
+    }
+
     Ok(())
 }
