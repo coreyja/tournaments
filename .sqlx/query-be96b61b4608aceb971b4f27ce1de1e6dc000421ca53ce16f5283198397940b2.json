@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            g.game_id,\n            g.board_size,\n            g.game_type,\n            g.status,\n            g.created_at,\n            g.updated_at\n        FROM games g\n        JOIN game_battlesnakes gb ON g.game_id = gb.game_id\n        WHERE gb.battlesnake_id = $1\n        ORDER BY g.created_at DESC\n        ",
+  "query": "\n        SELECT\n            g.game_id,\n            g.board_size,\n            g.game_type,\n            g.status,\n            g.enqueued_at,\n            g.created_at,\n            g.updated_at\n        FROM games g\n        JOIN game_battlesnakes gb ON g.game_id = gb.game_id\n        WHERE gb.battlesnake_id = $1\n        ORDER BY g.created_at DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -25,11 +25,16 @@
       },
       {
         "ordinal": 4,
-        "name": "created_at",
+        "name": "enqueued_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
@@ -44,9 +49,10 @@
       false,
       false,
       false,
+      true,
       false,
       false
     ]
   },
-  "hash": "40bcafcf8a9a5982395048120811bae67a8dbbf0bab46f7f67ee880bbd7f8692"
+  "hash": "be96b61b4608aceb971b4f27ce1de1e6dc000421ca53ce16f5283198397940b2"
 }

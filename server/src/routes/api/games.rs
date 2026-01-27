@@ -230,6 +230,17 @@ pub async fn create_game(
             )
         })?;
 
+    // Set enqueued_at timestamp before enqueueing the job
+    game::set_game_enqueued_at(&state.db, game.game_id, chrono::Utc::now())
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to set enqueued_at: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to prepare game".to_string(),
+            )
+        })?;
+
     // Enqueue the game runner job
     let job = GameRunnerJob {
         game_id: game.game_id,
@@ -296,7 +307,7 @@ pub async fn list_games(
         // Filter by specific snake
         let rows = sqlx::query!(
             r#"
-            SELECT DISTINCT g.game_id, g.board_size, g.game_type, g.status, g.created_at, g.updated_at
+            SELECT DISTINCT g.game_id, g.board_size, g.game_type, g.status, g.enqueued_at, g.created_at, g.updated_at
             FROM games g
             JOIN game_battlesnakes gb ON g.game_id = gb.game_id
             WHERE gb.battlesnake_id = $1
@@ -323,6 +334,7 @@ pub async fn list_games(
                     board_size,
                     game_type,
                     status,
+                    enqueued_at: row.enqueued_at,
                     created_at: row.created_at,
                     updated_at: row.updated_at,
                 })
@@ -332,7 +344,7 @@ pub async fn list_games(
         // List games where user has a snake participating
         let rows = sqlx::query!(
             r#"
-            SELECT DISTINCT g.game_id, g.board_size, g.game_type, g.status, g.created_at, g.updated_at
+            SELECT DISTINCT g.game_id, g.board_size, g.game_type, g.status, g.enqueued_at, g.created_at, g.updated_at
             FROM games g
             JOIN game_battlesnakes gb ON g.game_id = gb.game_id
             JOIN battlesnakes b ON gb.battlesnake_id = b.battlesnake_id
@@ -360,6 +372,7 @@ pub async fn list_games(
                     board_size,
                     game_type,
                     status,
+                    enqueued_at: row.enqueued_at,
                     created_at: row.created_at,
                     updated_at: row.updated_at,
                 })

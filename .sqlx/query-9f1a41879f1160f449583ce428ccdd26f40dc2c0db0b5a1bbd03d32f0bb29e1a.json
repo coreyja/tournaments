@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            game_id,\n            board_size,\n            game_type,\n            status,\n            created_at,\n            updated_at\n        FROM games\n        ORDER BY created_at DESC\n        ",
+  "query": "\n        UPDATE games\n        SET status = $2\n        WHERE game_id = $1\n        RETURNING\n            game_id,\n            board_size,\n            game_type,\n            status,\n            enqueued_at,\n            created_at,\n            updated_at\n        ",
   "describe": {
     "columns": [
       {
@@ -25,26 +25,35 @@
       },
       {
         "ordinal": 4,
-        "name": "created_at",
+        "name": "enqueued_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
     },
     "nullable": [
       false,
       false,
       false,
       false,
+      true,
       false,
       false
     ]
   },
-  "hash": "2e0060a8aa9a47b87cc46673acce7b290115b71baed0c3d7694d3f7ded271262"
+  "hash": "9f1a41879f1160f449583ce428ccdd26f40dc2c0db0b5a1bbd03d32f0bb29e1a"
 }
