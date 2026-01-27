@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use clap::Parser;
-use color_eyre::eyre::{eyre, Context as _};
+use color_eyre::eyre::{Context as _, eyre};
 use reqwest::StatusCode;
 use tokio::time::MissedTickBehavior;
 use tokio_util::sync::CancellationToken;
@@ -77,9 +77,7 @@ fn parse_duration(s: &str) -> Result<Duration, String> {
             .map_err(|_| "Invalid minutes".to_string())?;
         Ok(Duration::from_secs(mins * 60))
     } else if let Some(stripped) = s.strip_suffix('h') {
-        let hours: u64 = stripped
-            .parse()
-            .map_err(|_| "Invalid hours".to_string())?;
+        let hours: u64 = stripped.parse().map_err(|_| "Invalid hours".to_string())?;
         Ok(Duration::from_secs(hours * 3600))
     } else {
         Err("Duration must end with 's', 'm', or 'h'".to_string())
@@ -308,7 +306,9 @@ impl SteadyStreamPattern {
         if rate <= 0.0 {
             return Err("Rate must be positive".to_string());
         }
-        Ok(Self { rate_per_second: rate })
+        Ok(Self {
+            rate_per_second: rate,
+        })
     }
 }
 
@@ -384,7 +384,10 @@ impl BatchPattern {
         if batch_size == 0 {
             return Err("Batch size must be positive".to_string());
         }
-        Ok(Self { batch_size, interval })
+        Ok(Self {
+            batch_size,
+            interval,
+        })
     }
 }
 
@@ -531,8 +534,7 @@ async fn main() -> color_eyre::Result<()> {
     }
 
     // Parse duration
-    let duration =
-        parse_duration(&cli.duration).map_err(|e| eyre!("Invalid duration: {}", e))?;
+    let duration = parse_duration(&cli.duration).map_err(|e| eyre!("Invalid duration: {}", e))?;
 
     // Build load patterns
     let mut patterns: Vec<Box<dyn LoadPattern>> = Vec::new();
