@@ -4,11 +4,18 @@ use std::time::Duration;
 
 // Include the cli module from the library
 use arena::cli::config::{AuthConfig, CliConfig};
+use arena::cli::output::{
+    OutputFormat, format_timestamp, print_field, print_success, print_table, status_colored,
+};
 
 #[derive(Parser)]
 #[command(name = "arena")]
 #[command(about = "Battlesnake Arena CLI", long_about = None)]
 struct Cli {
+    /// Output format: 'json' or 'human'. Default: human for TTY, json for pipes.
+    #[arg(long, global = true)]
+    format: Option<String>,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -149,9 +156,13 @@ async fn main() -> color_eyre::Result<()> {
 
     let cli = Cli::parse();
 
+    // Determine output format based on flag and TTY detection
+    let output_format =
+        OutputFormat::from_flag(cli.format.as_deref()).map_err(|e| eyre!("{}", e))?;
+
     match cli.command {
         Commands::Auth { command } => handle_auth_command(command).await?,
-        Commands::Snakes { command } => handle_snakes_command(command).await?,
+        Commands::Snakes { command } => handle_snakes_command(command, output_format).await?,
         Commands::Games { command } => handle_games_command(command).await?,
     }
 
@@ -269,7 +280,10 @@ async fn handle_token_command(command: TokenCommands) -> color_eyre::Result<()> 
     Ok(())
 }
 
-async fn handle_snakes_command(command: SnakesCommands) -> color_eyre::Result<()> {
+async fn handle_snakes_command(
+    command: SnakesCommands,
+    output_format: OutputFormat,
+) -> color_eyre::Result<()> {
     let config = CliConfig::load()?;
     let token = config
         .auth
@@ -296,8 +310,35 @@ async fn handle_snakes_command(command: SnakesCommands) -> color_eyre::Result<()
             }
 
             let snakes: Vec<serde_json::Value> = response.json().await?;
-            // Output as JSON
-            println!("{}", serde_json::to_string_pretty(&snakes)?);
+
+            match output_format {
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&snakes)?);
+                }
+                OutputFormat::Human => {
+                    if snakes.is_empty() {
+                        println!("No snakes found. Create one with 'arena snakes create'.");
+                    } else {
+                        println!("Your snakes:\n");
+                        let rows: Vec<Vec<String>> = snakes
+                            .iter()
+                            .map(|snake| {
+                                let visibility = if snake["is_public"].as_bool().unwrap_or(false) {
+                                    "public"
+                                } else {
+                                    "private"
+                                };
+                                vec![
+                                    snake["name"].as_str().unwrap_or("").to_string(),
+                                    snake["url"].as_str().unwrap_or("").to_string(),
+                                    status_colored(visibility),
+                                ]
+                            })
+                            .collect();
+                        print_table(vec!["NAME", "URL", "VISIBILITY"], rows);
+                    }
+                }
+            }
         }
         SnakesCommands::Create { name, url, public } => {
             let response = client
@@ -319,7 +360,16 @@ async fn handle_snakes_command(command: SnakesCommands) -> color_eyre::Result<()
             }
 
             let snake: serde_json::Value = response.json().await?;
-            println!("{}", serde_json::to_string_pretty(&snake)?);
+
+            match output_format {
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&snake)?);
+                }
+                OutputFormat::Human => {
+                    print_success("Snake created successfully!\n");
+                    print_snake_details(&snake);
+                }
+            }
         }
         SnakesCommands::Show { id } => {
             let response = client
@@ -338,7 +388,15 @@ async fn handle_snakes_command(command: SnakesCommands) -> color_eyre::Result<()
             }
 
             let snake: serde_json::Value = response.json().await?;
-            println!("{}", serde_json::to_string_pretty(&snake)?);
+
+            match output_format {
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&snake)?);
+                }
+                OutputFormat::Human => {
+                    print_snake_details(&snake);
+                }
+            }
         }
         SnakesCommands::Edit {
             id,
@@ -378,7 +436,16 @@ async fn handle_snakes_command(command: SnakesCommands) -> color_eyre::Result<()
             }
 
             let snake: serde_json::Value = response.json().await?;
-            println!("{}", serde_json::to_string_pretty(&snake)?);
+
+            match output_format {
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&snake)?);
+                }
+                OutputFormat::Human => {
+                    print_success("Snake updated successfully!\n");
+                    print_snake_details(&snake);
+                }
+            }
         }
         SnakesCommands::Delete { id } => {
             let response = client
@@ -389,7 +456,20 @@ async fn handle_snakes_command(command: SnakesCommands) -> color_eyre::Result<()
                 .wrap_err("Failed to delete snake")?;
 
             if response.status() == reqwest::StatusCode::NO_CONTENT {
-                println!("Snake deleted successfully.");
+                match output_format {
+                    OutputFormat::Json => {
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "status": "deleted",
+                                "id": id
+                            })
+                        );
+                    }
+                    OutputFormat::Human => {
+                        print_success("Snake deleted successfully.");
+                    }
+                }
             } else if response.status() == reqwest::StatusCode::NOT_FOUND {
                 return Err(eyre!("Snake not found."));
             } else {
@@ -401,6 +481,32 @@ async fn handle_snakes_command(command: SnakesCommands) -> color_eyre::Result<()
     }
 
     Ok(())
+}
+
+/// Print snake details in human-readable format.
+fn print_snake_details(snake: &serde_json::Value) {
+    print_field("Name", snake["name"].as_str().unwrap_or(""));
+    print_field("ID", snake["id"].as_str().unwrap_or(""));
+    print_field("URL", snake["url"].as_str().unwrap_or(""));
+
+    let visibility = if snake["is_public"].as_bool().unwrap_or(false) {
+        "public"
+    } else {
+        "private"
+    };
+    print_field("Visibility", &status_colored(visibility));
+
+    if let Some(created) = snake["created_at"].as_str()
+        && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(created)
+    {
+        print_field("Created", &format_timestamp(dt.with_timezone(&chrono::Utc)));
+    }
+
+    if let Some(updated) = snake["updated_at"].as_str()
+        && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(updated)
+    {
+        print_field("Updated", &format_timestamp(dt.with_timezone(&chrono::Utc)));
+    }
 }
 
 async fn login() -> color_eyre::Result<()> {
