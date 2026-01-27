@@ -2,7 +2,7 @@ use axum::{
     extract::State,
     http::StatusCode,
     response::IntoResponse,
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
 };
 use maud::html;
 use tower_http::cors::{Any, CorsLayer};
@@ -30,6 +30,12 @@ pub fn routes(app_state: AppState) -> axum::Router {
         .route("/tokens", post(api::tokens::create_token))
         .route("/tokens", get(api::tokens::list_tokens))
         .route("/tokens/{id}", delete(api::tokens::revoke_token))
+        // Snake management endpoints
+        .route("/snakes", get(api::snakes::list_snakes))
+        .route("/snakes", post(api::snakes::create_snake))
+        .route("/snakes/{id}", get(api::snakes::get_snake))
+        .route("/snakes/{id}", put(api::snakes::update_snake))
+        .route("/snakes/{id}", delete(api::snakes::delete_snake))
         .layer(cors);
 
     axum::Router::new()
