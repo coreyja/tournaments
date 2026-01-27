@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE games\n        SET enqueued_at = $2\n        WHERE game_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "13042c14d5a6b0332865d69aa85bebf7eedcaf43c177f9a846db5fe0d122df84"
+}

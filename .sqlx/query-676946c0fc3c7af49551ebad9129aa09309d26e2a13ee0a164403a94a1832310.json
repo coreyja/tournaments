@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            g.game_id,\n            g.board_size,\n            g.game_type,\n            g.status,\n            g.created_at,\n            g.updated_at,\n            b.name as \"winner_name?\"\n        FROM games g\n        LEFT JOIN game_battlesnakes gb ON g.game_id = gb.game_id AND gb.placement = 1\n        LEFT JOIN battlesnakes b ON gb.battlesnake_id = b.battlesnake_id\n        ORDER BY g.created_at DESC\n        ",
+  "query": "\n        SELECT\n            g.game_id,\n            g.board_size,\n            g.game_type,\n            g.status,\n            g.enqueued_at,\n            g.created_at,\n            g.updated_at,\n            b.name as \"winner_name?\"\n        FROM games g\n        LEFT JOIN game_battlesnakes gb ON g.game_id = gb.game_id AND gb.placement = 1\n        LEFT JOIN battlesnakes b ON gb.battlesnake_id = b.battlesnake_id\n        ORDER BY g.created_at DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -25,16 +25,21 @@
       },
       {
         "ordinal": 4,
-        "name": "created_at",
+        "name": "enqueued_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 5,
-        "name": "updated_at",
+        "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 6,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
         "name": "winner_name?",
         "type_info": "Text"
       }
@@ -47,10 +52,11 @@
       false,
       false,
       false,
+      true,
       false,
       false,
       false
     ]
   },
-  "hash": "fbbfcdfd4960149b3fce5774b44396e6d55d5526061f636af95b3de73013f9be"
+  "hash": "676946c0fc3c7af49551ebad9129aa09309d26e2a13ee0a164403a94a1832310"
 }

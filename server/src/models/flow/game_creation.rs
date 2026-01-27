@@ -212,6 +212,11 @@ impl GameCreationFlow {
             .await
             .wrap_err("Failed to create game")?;
 
+        // Set enqueued_at timestamp before enqueueing the job
+        game::set_game_enqueued_at(&app_state.db, game.game_id, chrono::Utc::now())
+            .await
+            .wrap_err("Failed to set enqueued_at")?;
+
         // Enqueue a job to run the game asynchronously
         let job = crate::jobs::GameRunnerJob {
             game_id: game.game_id,

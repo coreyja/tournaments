@@ -90,6 +90,7 @@ pub async fn get_games_by_battlesnake_id(
             g.board_size,
             g.game_type,
             g.status,
+            g.enqueued_at,
             g.created_at,
             g.updated_at
         FROM games g
@@ -118,6 +119,7 @@ pub async fn get_games_by_battlesnake_id(
                 board_size,
                 game_type,
                 status,
+                enqueued_at: row.enqueued_at,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             })

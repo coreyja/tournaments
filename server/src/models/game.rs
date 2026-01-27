@@ -118,6 +118,7 @@ pub struct Game {
     pub board_size: GameBoardSize,
     pub game_type: GameType,
     pub status: GameStatus,
+    pub enqueued_at: Option<chrono::DateTime<chrono::Utc>>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -144,6 +145,7 @@ struct GameWithWinnerRow {
     board_size: String,
     game_type: String,
     status: String,
+    enqueued_at: Option<chrono::DateTime<chrono::Utc>>,
     created_at: chrono::DateTime<chrono::Utc>,
     updated_at: chrono::DateTime<chrono::Utc>,
     winner_name: Option<String>,
@@ -160,6 +162,7 @@ pub async fn get_all_games(pool: &PgPool) -> cja::Result<Vec<Game>> {
             board_size,
             game_type,
             status,
+            enqueued_at,
             created_at,
             updated_at
         FROM games
@@ -185,6 +188,7 @@ pub async fn get_all_games(pool: &PgPool) -> cja::Result<Vec<Game>> {
                 board_size,
                 game_type,
                 status,
+                enqueued_at: row.enqueued_at,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             })
@@ -203,6 +207,7 @@ pub async fn get_game_by_id(pool: &PgPool, game_id: Uuid) -> cja::Result<Option<
             board_size,
             game_type,
             status,
+            enqueued_at,
             created_at,
             updated_at
         FROM games
@@ -228,6 +233,7 @@ pub async fn get_game_by_id(pool: &PgPool, game_id: Uuid) -> cja::Result<Option<
                 board_size,
                 game_type,
                 status,
+                enqueued_at: row.enqueued_at,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             })
@@ -306,6 +312,7 @@ pub async fn create_game_with_snakes(
             board_size,
             game_type,
             status,
+            enqueued_at,
             created_at,
             updated_at
         "#,
@@ -323,6 +330,7 @@ pub async fn create_game_with_snakes(
         game_type: data.game_type,
         status: GameStatus::from_str(&row.status)
             .wrap_err_with(|| format!("Invalid game status: {}", row.status))?,
+        enqueued_at: row.enqueued_at,
         created_at: row.created_at,
         updated_at: row.updated_at,
     };
@@ -375,6 +383,7 @@ where
             board_size,
             game_type,
             status,
+            enqueued_at,
             created_at,
             updated_at
         "#,
@@ -392,6 +401,7 @@ where
         game_type: data.game_type,
         status: GameStatus::from_str(&row.status)
             .wrap_err_with(|| format!("Invalid game status: {}", row.status))?,
+        enqueued_at: row.enqueued_at,
         created_at: row.created_at,
         updated_at: row.updated_at,
     })
@@ -442,6 +452,7 @@ pub async fn update_game_status(
             board_size,
             game_type,
             status,
+            enqueued_at,
             created_at,
             updated_at
         "#,
@@ -464,9 +475,32 @@ pub async fn update_game_status(
         board_size,
         game_type,
         status,
+        enqueued_at: row.enqueued_at,
         created_at: row.created_at,
         updated_at: row.updated_at,
     })
+}
+
+// Set the enqueued_at timestamp for a game
+pub async fn set_game_enqueued_at(
+    pool: &PgPool,
+    game_id: Uuid,
+    enqueued_at: chrono::DateTime<chrono::Utc>,
+) -> cja::Result<()> {
+    sqlx::query!(
+        r#"
+        UPDATE games
+        SET enqueued_at = $2
+        WHERE game_id = $1
+        "#,
+        game_id,
+        enqueued_at
+    )
+    .execute(pool)
+    .await
+    .wrap_err_with(|| format!("Failed to set enqueued_at for game {}", game_id))?;
+
+    Ok(())
 }
 
 /// Run a game with turn-by-turn DB persistence and WebSocket notifications
@@ -492,6 +526,17 @@ pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja:
     let game = get_game_by_id(pool, game_id)
         .await?
         .ok_or_else(|| cja::color_eyre::eyre::eyre!("Game not found"))?;
+
+    // Emit queue_wait metric if enqueued_at is available
+    if let Some(enqueued_at) = game.enqueued_at {
+        let queue_wait = chrono::Utc::now().signed_duration_since(enqueued_at);
+        tracing::info!(
+            metric_type = "queue_wait",
+            game_id = %game_id,
+            duration_ms = queue_wait.num_milliseconds(),
+            "game queue wait time"
+        );
+    }
 
     // Update status to running
     update_game_status(pool, game_id, GameStatus::Running).await?;
@@ -546,12 +591,23 @@ pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja:
     crate::models::turn::create_turn(pool, game_channels, game_id, 0, Some(frame_0_json)).await?;
     tracing::info!(game_id = %game_id, "Turn 0 stored successfully");
 
+    // Track timing for processing_overhead metric
+    let game_start = std::time::Instant::now();
+    let mut total_snake_wait_ms: i64 = 0;
+
     // Run the game turn by turn
     while !is_game_over(&engine_game) && engine_game.turn < MAX_TURNS {
         // Request moves from all alive snakes in parallel
         let move_results =
             request_moves_parallel(http_client, &engine_game, &snake_urls, timeout, &last_moves)
                 .await;
+
+        // Accumulate snake wait time from latency measurements
+        for result in &move_results {
+            if let Some(latency) = result.latency_ms {
+                total_snake_wait_ms += latency;
+            }
+        }
 
         // Convert to move vector for engine
         let moves: Vec<(String, Move)> = move_results
@@ -586,6 +642,9 @@ pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja:
         let frame_json = serde_json::to_value(&frame)
             .wrap_err_with(|| format!("Failed to serialize frame {}", engine_game.turn))?;
 
+        // Measure DB write latency
+        let db_write_start = std::time::Instant::now();
+
         tracing::debug!(game_id = %game_id, turn = engine_game.turn, "Storing turn");
         let turn = crate::models::turn::create_turn(
             pool,
@@ -610,7 +669,41 @@ pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja:
                 .await?;
             }
         }
+
+        let db_write_duration = db_write_start.elapsed();
+        tracing::info!(
+            metric_type = "db_write_latency",
+            game_id = %game_id,
+            turn = engine_game.turn,
+            duration_ms = db_write_duration.as_millis() as u64,
+            "turn persistence latency"
+        );
+
+        // Measure async scheduler jitter
+        let before_yield = std::time::Instant::now();
+        tokio::task::yield_now().await;
+        let yield_duration = before_yield.elapsed();
+        tracing::info!(
+            metric_type = "scheduler_jitter",
+            game_id = %game_id,
+            turn = engine_game.turn,
+            duration_us = yield_duration.as_micros() as u64,
+            "async scheduler jitter"
+        );
     }
+
+    // Emit processing_overhead metric
+    let total_time = game_start.elapsed();
+    let total_time_ms = total_time.as_millis() as i64;
+    let overhead_ms = total_time_ms - total_snake_wait_ms;
+    tracing::info!(
+        metric_type = "processing_overhead",
+        game_id = %game_id,
+        duration_ms = overhead_ms,
+        total_ms = total_time_ms,
+        snake_wait_ms = total_snake_wait_ms,
+        "game processing overhead"
+    );
 
     // Call /end for all snakes in parallel (fire and forget)
     tracing::info!(game_id = %game_id, "Calling /end for all snakes");
@@ -678,6 +771,7 @@ pub async fn get_all_games_with_winners(pool: &PgPool) -> cja::Result<Vec<(Game,
             g.board_size,
             g.game_type,
             g.status,
+            g.enqueued_at,
             g.created_at,
             g.updated_at,
             b.name as "winner_name?"
@@ -706,6 +800,7 @@ pub async fn get_all_games_with_winners(pool: &PgPool) -> cja::Result<Vec<(Game,
                 board_size,
                 game_type,
                 status,
+                enqueued_at: row.enqueued_at,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             };
