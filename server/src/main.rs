@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use cja::{
-    jobs::worker::DEFAULT_LOCK_TIMEOUT,
+    jobs::worker::{DEFAULT_LOCK_TIMEOUT, DEFAULT_MAX_RETRIES},
     server::run_server,
     setup::{setup_sentry, setup_tracing},
 };
@@ -36,9 +36,15 @@ fn main() -> color_eyre::Result<()> {
     // Initialize Sentry for error tracking
     let _sentry_guard = setup_sentry();
 
+    // Configure tokio worker threads (default: 4)
+    let worker_threads: usize = std::env::var("ARENA_TOKIO_WORKER_THREADS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(4);
+
     // Create and run the tokio runtime
     tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(4)
+        .worker_threads(worker_threads)
         .enable_all()
         .build()?
         .block_on(async { run_application().await })
@@ -131,21 +137,37 @@ async fn spawn_application_tasks(app_state: AppState) -> cja::Result<Vec<NamedTa
 
     if is_feature_enabled("JOBS") {
         info!("Jobs Enabled");
-        // Allow configuring job poll interval via env var (default 60 seconds)
-        let job_poll_interval_secs: u64 = std::env::var("JOB_POLL_INTERVAL_SECS")
+
+        // Job poll interval in milliseconds (default: 60000ms = 60 seconds)
+        let job_poll_interval_ms: u64 = std::env::var("ARENA_JOB_POLL_INTERVAL_MS")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(60);
-        info!("Job poll interval: {} seconds", job_poll_interval_secs);
+            .unwrap_or(60_000);
+        info!("Job poll interval: {}ms", job_poll_interval_ms);
+
+        // Job lock timeout in seconds (default: 2 hours)
+        let job_lock_timeout_secs: u64 = std::env::var("ARENA_JOB_LOCK_TIMEOUT_SECS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(DEFAULT_LOCK_TIMEOUT.as_secs());
+        info!("Job lock timeout: {}s", job_lock_timeout_secs);
+
+        // Max retries before job is deleted (default: 20)
+        let job_max_retries: i32 = std::env::var("ARENA_JOB_MAX_RETRIES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(DEFAULT_MAX_RETRIES);
+        info!("Job max retries: {}", job_max_retries);
+
         tasks.push(NamedTask::spawn(
             "jobs",
             cja::jobs::worker::job_worker(
                 app_state.clone(),
                 jobs::Jobs,
-                std::time::Duration::from_secs(job_poll_interval_secs),
-                20,
+                std::time::Duration::from_millis(job_poll_interval_ms),
+                job_max_retries,
                 CancellationToken::new(),
-                DEFAULT_LOCK_TIMEOUT,
+                std::time::Duration::from_secs(job_lock_timeout_secs),
             ),
         ));
     } else {
