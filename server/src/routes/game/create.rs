@@ -103,14 +103,21 @@ pub async fn show_game_flow(
                         div class="alert alert-info mb-3" {
                             p { "You have selected " (flow.selected_count()) " of 4 possible battlesnakes." }
 
-                            // Display the selected battlesnakes
+                            // Display the selected battlesnakes with their counts
                             @if !selected_battlesnakes.is_empty() {
                                 div class="mt-2" {
                                     p class="mb-1 fw-bold" { "Selected Battlesnakes:" }
                                     ul class="list-group" {
                                         @for snake in &selected_battlesnakes {
+                                            @let count = flow.battlesnake_count(&snake.battlesnake_id);
                                             li class="list-group-item d-flex justify-content-between align-items-center" {
-                                                span { (snake.name) }
+                                                span {
+                                                    (snake.name)
+                                                    @if count > 1 {
+                                                        " "
+                                                        span class="badge bg-secondary" { "×" (count) }
+                                                    }
+                                                }
                                                 form action={"/games/flow/"(flow_id)"/remove-snake/"(snake.battlesnake_id)} method="post" class="d-inline" {
                                                     button type="submit" class="btn btn-sm btn-danger" { "Remove" }
                                                 }
@@ -145,23 +152,38 @@ pub async fn show_game_flow(
                 } @else {
                     div class="row row-cols-1 row-cols-md-3 g-4 mb-4" {
                         @for snake in &user_battlesnakes {
+                            @let count = flow.battlesnake_count(&snake.battlesnake_id);
+                            @let can_add = flow.selected_count() < 4;
                             div class="col" {
-                                div class=(format!("card h-100 {}", if flow.is_battlesnake_selected(&snake.battlesnake_id) { "border-primary" } else { "" })) {
+                                div class=(format!("card h-100 {}", if count > 0 { "border-primary" } else { "" })) {
                                     div class="card-body" {
-                                        h5 class="card-title" { (snake.name) }
+                                        h5 class="card-title" {
+                                            (snake.name)
+                                            @if count > 0 {
+                                                " "
+                                                span class="badge bg-primary" { "×" (count) }
+                                            }
+                                        }
                                         p class="card-text" {
                                             a href=(snake.url) target="_blank" { (snake.url) }
                                         }
                                     }
-                                    div class="card-footer" {
-                                        @if flow.is_battlesnake_selected(&snake.battlesnake_id) {
-                                            form action={"/games/flow/"(flow_id)"/remove-snake/"(snake.battlesnake_id)} method="post" {
-                                                button type="submit" class="btn btn-danger w-100" { "Remove" }
-                                            }
-                                        } @else {
-                                            form action={"/games/flow/"(flow_id)"/add-snake/"(snake.battlesnake_id)} method="post" {
+                                    div class="card-footer d-flex gap-2" {
+                                        // Always show Add button if under 4 total snakes
+                                        @if can_add {
+                                            form action={"/games/flow/"(flow_id)"/add-snake/"(snake.battlesnake_id)} method="post" class="flex-grow-1" {
                                                 button type="submit" class="btn btn-primary w-100" { "Add to Game" }
                                             }
+                                        }
+                                        // Show Remove button if this snake is selected
+                                        @if count > 0 {
+                                            form action={"/games/flow/"(flow_id)"/remove-snake/"(snake.battlesnake_id)} method="post" class="flex-grow-1" {
+                                                button type="submit" class="btn btn-danger w-100" { "Remove" }
+                                            }
+                                        }
+                                        // If can't add and not selected, show disabled state
+                                        @if !can_add && count == 0 {
+                                            button type="button" class="btn btn-secondary w-100" disabled { "Max reached" }
                                         }
                                     }
                                 }
@@ -408,6 +430,8 @@ async fn render_search_results(flow: &GameCreationFlow, db: &sqlx::PgPool) -> ma
         .await
         .unwrap_or_default();
 
+    let can_add = flow.selected_count() < 4;
+
     html! {
         @if search_results.is_empty() {
             div class="alert alert-info" {
@@ -417,23 +441,37 @@ async fn render_search_results(flow: &GameCreationFlow, db: &sqlx::PgPool) -> ma
             h3 { "Search Results" }
             div class="row row-cols-1 row-cols-md-3 g-4" {
                 @for snake in &search_results {
+                    @let count = flow.battlesnake_count(&snake.battlesnake_id);
                     div class="col" {
-                        div class=(format!("card h-100 {}", if flow.is_battlesnake_selected(&snake.battlesnake_id) { "border-primary" } else { "" })) {
+                        div class=(format!("card h-100 {}", if count > 0 { "border-primary" } else { "" })) {
                             div class="card-body" {
-                                h5 class="card-title" { (snake.name) }
+                                h5 class="card-title" {
+                                    (snake.name)
+                                    @if count > 0 {
+                                        " "
+                                        span class="badge bg-primary" { "×" (count) }
+                                    }
+                                }
                                 p class="card-text" {
                                     a href=(snake.url) target="_blank" { (snake.url) }
                                 }
                             }
-                            div class="card-footer" {
-                                @if flow.is_battlesnake_selected(&snake.battlesnake_id) {
-                                    form action={"/games/flow/"(flow.flow_id)"/remove-snake/"(snake.battlesnake_id)} method="post" {
-                                        button type="submit" class="btn btn-danger w-100" { "Remove" }
-                                    }
-                                } @else {
-                                    form action={"/games/flow/"(flow.flow_id)"/add-snake/"(snake.battlesnake_id)} method="post" {
+                            div class="card-footer d-flex gap-2" {
+                                // Always show Add button if under 4 total snakes
+                                @if can_add {
+                                    form action={"/games/flow/"(flow.flow_id)"/add-snake/"(snake.battlesnake_id)} method="post" class="flex-grow-1" {
                                         button type="submit" class="btn btn-primary w-100" { "Add to Game" }
                                     }
+                                }
+                                // Show Remove button if this snake is selected
+                                @if count > 0 {
+                                    form action={"/games/flow/"(flow.flow_id)"/remove-snake/"(snake.battlesnake_id)} method="post" class="flex-grow-1" {
+                                        button type="submit" class="btn btn-danger w-100" { "Remove" }
+                                    }
+                                }
+                                // If can't add and not selected, show disabled state
+                                @if !can_add && count == 0 {
+                                    button type="button" class="btn btn-secondary w-100" disabled { "Max reached" }
                                 }
                             }
                         }

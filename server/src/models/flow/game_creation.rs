@@ -1,7 +1,6 @@
 use color_eyre::eyre::Context as _;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::models::battlesnake::{self, Battlesnake};
@@ -14,7 +13,8 @@ pub struct GameCreationFlow {
     pub flow_id: Uuid,
     pub board_size: GameBoardSize,
     pub game_type: GameType,
-    pub selected_battlesnake_ids: HashSet<Uuid>,
+    /// Selected battlesnake IDs - duplicates are allowed (same snake can appear multiple times)
+    pub selected_battlesnake_ids: Vec<Uuid>,
     pub search_query: Option<String>,
     pub user_id: Uuid,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -92,10 +92,6 @@ impl GameCreationFlow {
 
     // Update the flow with new values
     pub async fn update(&self, pool: &PgPool) -> cja::Result<Self> {
-        // Convert selected_battlesnake_ids to a Vec for SQL
-        let selected_battlesnakes: Vec<Uuid> =
-            self.selected_battlesnake_ids.iter().copied().collect();
-
         let flow = sqlx::query_as!(
             GameCreationFlowRaw,
             r#"
@@ -118,7 +114,7 @@ impl GameCreationFlow {
             "#,
             self.board_size.as_str(),
             self.game_type.as_str(),
-            &selected_battlesnakes,
+            &self.selected_battlesnake_ids,
             self.search_query.as_deref(),
             self.flow_id,
             self.user_id
@@ -147,28 +143,43 @@ impl GameCreationFlow {
         Ok(())
     }
 
-    // Add a battlesnake to the selection
+    // Add a battlesnake to the selection (duplicates allowed)
     pub fn add_battlesnake(&mut self, battlesnake_id: Uuid) -> bool {
-        // Only add if we have fewer than 4 snakes selected and it's not already selected
-        if self.selected_battlesnake_ids.len() < 4
-            && !self.selected_battlesnake_ids.contains(&battlesnake_id)
-        {
-            self.selected_battlesnake_ids.insert(battlesnake_id);
+        // Only add if we have fewer than 4 snakes selected
+        if self.selected_battlesnake_ids.len() < 4 {
+            self.selected_battlesnake_ids.push(battlesnake_id);
             true
         } else {
-            false // Already have 4 snakes or snake is already selected
+            false // Already have 4 snakes
         }
     }
 
-    // Remove a battlesnake from the selection
+    // Remove the last occurrence of a battlesnake from the selection
     pub fn remove_battlesnake(&mut self, battlesnake_id: Uuid) -> bool {
-        // Remove the battlesnake if it's in the selection
-        self.selected_battlesnake_ids.remove(&battlesnake_id)
+        // Find and remove the last occurrence (allows removing duplicates one at a time)
+        if let Some(pos) = self
+            .selected_battlesnake_ids
+            .iter()
+            .rposition(|&id| id == battlesnake_id)
+        {
+            self.selected_battlesnake_ids.remove(pos);
+            true
+        } else {
+            false
+        }
     }
 
-    // Check if a battlesnake is selected
+    // Check if a battlesnake is selected (at least once)
     pub fn is_battlesnake_selected(&self, battlesnake_id: &Uuid) -> bool {
         self.selected_battlesnake_ids.contains(battlesnake_id)
+    }
+
+    // Count how many times a battlesnake is selected
+    pub fn battlesnake_count(&self, battlesnake_id: &Uuid) -> usize {
+        self.selected_battlesnake_ids
+            .iter()
+            .filter(|&id| id == battlesnake_id)
+            .count()
     }
 
     // Get count of selected snakes
@@ -200,7 +211,7 @@ impl GameCreationFlow {
         Ok(CreateGameWithSnakes {
             board_size: self.board_size,
             game_type: self.game_type,
-            battlesnake_ids: self.selected_battlesnake_ids.iter().copied().collect(),
+            battlesnake_ids: self.selected_battlesnake_ids.clone(),
         })
     }
 
@@ -287,7 +298,7 @@ impl GameCreationFlow {
             return Ok(Vec::new());
         }
 
-        let ids: Vec<Uuid> = self.selected_battlesnake_ids.iter().copied().collect();
+        let ids: Vec<Uuid> = self.selected_battlesnake_ids.to_vec();
 
         let battlesnakes = sqlx::query_as!(
             Battlesnake,
@@ -339,11 +350,137 @@ impl From<GameCreationFlowRaw> for GameCreationFlow {
             flow_id: raw.flow_id,
             board_size,
             game_type,
-            selected_battlesnake_ids: raw.selected_battlesnakes.into_iter().collect(),
+            selected_battlesnake_ids: raw.selected_battlesnakes,
             search_query: raw.search_query,
             user_id: raw.user_id,
             created_at: raw.created_at,
             updated_at: raw.updated_at,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_flow() -> GameCreationFlow {
+        GameCreationFlow {
+            flow_id: Uuid::new_v4(),
+            board_size: GameBoardSize::Medium,
+            game_type: GameType::Standard,
+            selected_battlesnake_ids: Vec::new(),
+            search_query: None,
+            user_id: Uuid::new_v4(),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_add_battlesnake_allows_duplicates() {
+        let mut flow = create_test_flow();
+        let snake_id = Uuid::new_v4();
+
+        // Add the same snake twice
+        assert!(flow.add_battlesnake(snake_id));
+        assert!(flow.add_battlesnake(snake_id));
+
+        assert_eq!(flow.selected_count(), 2);
+        assert_eq!(flow.battlesnake_count(&snake_id), 2);
+    }
+
+    #[test]
+    fn test_add_battlesnake_respects_max_4() {
+        let mut flow = create_test_flow();
+        let snake_id = Uuid::new_v4();
+
+        // Add the same snake 4 times
+        assert!(flow.add_battlesnake(snake_id));
+        assert!(flow.add_battlesnake(snake_id));
+        assert!(flow.add_battlesnake(snake_id));
+        assert!(flow.add_battlesnake(snake_id));
+
+        // 5th should fail
+        assert!(!flow.add_battlesnake(snake_id));
+        assert_eq!(flow.selected_count(), 4);
+    }
+
+    #[test]
+    fn test_remove_battlesnake_removes_one_at_a_time() {
+        let mut flow = create_test_flow();
+        let snake_id = Uuid::new_v4();
+
+        // Add the same snake 3 times
+        flow.add_battlesnake(snake_id);
+        flow.add_battlesnake(snake_id);
+        flow.add_battlesnake(snake_id);
+        assert_eq!(flow.battlesnake_count(&snake_id), 3);
+
+        // Remove one
+        assert!(flow.remove_battlesnake(snake_id));
+        assert_eq!(flow.battlesnake_count(&snake_id), 2);
+
+        // Remove another
+        assert!(flow.remove_battlesnake(snake_id));
+        assert_eq!(flow.battlesnake_count(&snake_id), 1);
+
+        // Remove last one
+        assert!(flow.remove_battlesnake(snake_id));
+        assert_eq!(flow.battlesnake_count(&snake_id), 0);
+
+        // Can't remove what's not there
+        assert!(!flow.remove_battlesnake(snake_id));
+    }
+
+    #[test]
+    fn test_battlesnake_count_with_mixed_snakes() {
+        let mut flow = create_test_flow();
+        let snake_a = Uuid::new_v4();
+        let snake_b = Uuid::new_v4();
+
+        flow.add_battlesnake(snake_a);
+        flow.add_battlesnake(snake_b);
+        flow.add_battlesnake(snake_a);
+
+        assert_eq!(flow.battlesnake_count(&snake_a), 2);
+        assert_eq!(flow.battlesnake_count(&snake_b), 1);
+        assert_eq!(flow.selected_count(), 3);
+    }
+
+    #[test]
+    fn test_is_battlesnake_selected() {
+        let mut flow = create_test_flow();
+        let snake_id = Uuid::new_v4();
+        let other_snake = Uuid::new_v4();
+
+        assert!(!flow.is_battlesnake_selected(&snake_id));
+
+        flow.add_battlesnake(snake_id);
+        assert!(flow.is_battlesnake_selected(&snake_id));
+        assert!(!flow.is_battlesnake_selected(&other_snake));
+    }
+
+    #[test]
+    fn test_validate_requires_at_least_one_snake() {
+        let flow = create_test_flow();
+        assert!(flow.validate().is_err());
+
+        let mut flow_with_snake = create_test_flow();
+        flow_with_snake.add_battlesnake(Uuid::new_v4());
+        assert!(flow_with_snake.validate().is_ok());
+    }
+
+    #[test]
+    fn test_to_create_game_request_preserves_duplicates() {
+        let mut flow = create_test_flow();
+        let snake_id = Uuid::new_v4();
+
+        flow.add_battlesnake(snake_id);
+        flow.add_battlesnake(snake_id);
+        flow.add_battlesnake(snake_id);
+
+        let request = flow.to_create_game_request().unwrap();
+        assert_eq!(request.battlesnake_ids.len(), 3);
+        assert!(request.battlesnake_ids.iter().all(|&id| id == snake_id));
     }
 }

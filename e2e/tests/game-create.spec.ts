@@ -357,15 +357,13 @@ test.describe('Create Game', () => {
     // Verify all 4 are selected
     await expect(authenticatedPage.getByText('You have selected 4 of 4 possible battlesnakes.')).toBeVisible();
 
-    // Try to add the 5th battlesnake
+    // The 5th snake card should show "Max reached" (disabled) since we can't add more
     const fifthSnakeCard = authenticatedPage.locator('.card', { hasText: snakeNames[4] }).first();
-    await fifthSnakeCard.getByRole('button', { name: 'Add to Game' }).click();
+    await expect(fifthSnakeCard.getByRole('button', { name: 'Max reached' })).toBeVisible();
+    await expect(fifthSnakeCard.getByRole('button', { name: 'Max reached' })).toBeDisabled();
 
-    // Should still have only 4 selected (5th wasn't added)
+    // Should still have only 4 selected
     await expect(authenticatedPage.getByText('You have selected 4 of 4 possible battlesnakes.')).toBeVisible();
-
-    // The 5th snake card should still show "Add to Game" (not selected)
-    await expect(fifthSnakeCard.getByRole('button', { name: 'Add to Game' })).toBeVisible();
   });
 
   test('private battlesnakes from other users are not visible in search', async ({ authenticatedPage, loginAsUser }) => {
