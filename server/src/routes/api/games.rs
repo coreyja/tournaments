@@ -5,7 +5,6 @@ use axum::{
     response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::{
@@ -171,16 +170,15 @@ pub async fn create_game(
         ));
     }
 
-    // Check for duplicates
-    let unique_snakes: HashSet<_> = request.snakes.iter().collect();
-    if unique_snakes.len() != request.snakes.len() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Duplicate snake IDs are not allowed".to_string(),
-        ));
-    }
+    // Get unique snake IDs to validate (duplicates are allowed but we only need to check each once)
+    let unique_snake_ids: Vec<Uuid> = {
+        let mut ids = request.snakes.clone();
+        ids.sort();
+        ids.dedup();
+        ids
+    };
 
-    // Validate that all snakes exist and are accessible to the user
+    // Validate that all unique snakes exist and are accessible to the user
     // (owned by user OR public)
     let accessible_snakes = sqlx::query!(
         r#"
@@ -189,7 +187,7 @@ pub async fn create_game(
         WHERE battlesnake_id = ANY($1)
           AND (user_id = $2 OR visibility = 'public')
         "#,
-        &request.snakes as &[Uuid],
+        &unique_snake_ids as &[Uuid],
         user.user_id
     )
     .fetch_all(&state.db)
@@ -203,8 +201,8 @@ pub async fn create_game(
     })?;
 
     // Check if all requested snakes were found and accessible
-    let accessible_ids: HashSet<_> = accessible_snakes.iter().map(|r| r.battlesnake_id).collect();
-    for snake_id in &request.snakes {
+    let accessible_ids: Vec<Uuid> = accessible_snakes.iter().map(|r| r.battlesnake_id).collect();
+    for snake_id in &unique_snake_ids {
         if !accessible_ids.contains(snake_id) {
             return Err((
                 StatusCode::BAD_REQUEST,

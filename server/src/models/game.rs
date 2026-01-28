@@ -278,16 +278,6 @@ pub async fn create_game_with_snakes(
         ));
     }
 
-    // Check for duplicate battlesnake IDs
-    let mut unique_ids = data.battlesnake_ids.clone();
-    unique_ids.sort();
-    unique_ids.dedup();
-    if unique_ids.len() != data.battlesnake_ids.len() {
-        return Err(cja::color_eyre::eyre::eyre!(
-            "Duplicate battlesnake IDs are not allowed"
-        ));
-    }
-
     // Start a transaction
     let mut tx = pool
         .begin()

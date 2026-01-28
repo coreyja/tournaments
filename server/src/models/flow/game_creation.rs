@@ -1,7 +1,6 @@
 use color_eyre::eyre::Context as _;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::models::battlesnake::{self, Battlesnake};
@@ -14,7 +13,8 @@ pub struct GameCreationFlow {
     pub flow_id: Uuid,
     pub board_size: GameBoardSize,
     pub game_type: GameType,
-    pub selected_battlesnake_ids: HashSet<Uuid>,
+    /// Selected battlesnake IDs - duplicates are allowed (same snake can appear multiple times)
+    pub selected_battlesnake_ids: Vec<Uuid>,
     pub search_query: Option<String>,
     pub user_id: Uuid,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -92,10 +92,6 @@ impl GameCreationFlow {
 
     // Update the flow with new values
     pub async fn update(&self, pool: &PgPool) -> cja::Result<Self> {
-        // Convert selected_battlesnake_ids to a Vec for SQL
-        let selected_battlesnakes: Vec<Uuid> =
-            self.selected_battlesnake_ids.iter().copied().collect();
-
         let flow = sqlx::query_as!(
             GameCreationFlowRaw,
             r#"
@@ -118,7 +114,7 @@ impl GameCreationFlow {
             "#,
             self.board_size.as_str(),
             self.game_type.as_str(),
-            &selected_battlesnakes,
+            &self.selected_battlesnake_ids,
             self.search_query.as_deref(),
             self.flow_id,
             self.user_id
@@ -147,28 +143,43 @@ impl GameCreationFlow {
         Ok(())
     }
 
-    // Add a battlesnake to the selection
+    // Add a battlesnake to the selection (duplicates allowed)
     pub fn add_battlesnake(&mut self, battlesnake_id: Uuid) -> bool {
-        // Only add if we have fewer than 4 snakes selected and it's not already selected
-        if self.selected_battlesnake_ids.len() < 4
-            && !self.selected_battlesnake_ids.contains(&battlesnake_id)
-        {
-            self.selected_battlesnake_ids.insert(battlesnake_id);
+        // Only add if we have fewer than 4 snakes selected
+        if self.selected_battlesnake_ids.len() < 4 {
+            self.selected_battlesnake_ids.push(battlesnake_id);
             true
         } else {
-            false // Already have 4 snakes or snake is already selected
+            false // Already have 4 snakes
         }
     }
 
-    // Remove a battlesnake from the selection
+    // Remove the last occurrence of a battlesnake from the selection
     pub fn remove_battlesnake(&mut self, battlesnake_id: Uuid) -> bool {
-        // Remove the battlesnake if it's in the selection
-        self.selected_battlesnake_ids.remove(&battlesnake_id)
+        // Find and remove the last occurrence (allows removing duplicates one at a time)
+        if let Some(pos) = self
+            .selected_battlesnake_ids
+            .iter()
+            .rposition(|&id| id == battlesnake_id)
+        {
+            self.selected_battlesnake_ids.remove(pos);
+            true
+        } else {
+            false
+        }
     }
 
-    // Check if a battlesnake is selected
+    // Check if a battlesnake is selected (at least once)
     pub fn is_battlesnake_selected(&self, battlesnake_id: &Uuid) -> bool {
         self.selected_battlesnake_ids.contains(battlesnake_id)
+    }
+
+    // Count how many times a battlesnake is selected
+    pub fn battlesnake_count(&self, battlesnake_id: &Uuid) -> usize {
+        self.selected_battlesnake_ids
+            .iter()
+            .filter(|&id| id == battlesnake_id)
+            .count()
     }
 
     // Get count of selected snakes
@@ -200,7 +211,7 @@ impl GameCreationFlow {
         Ok(CreateGameWithSnakes {
             board_size: self.board_size,
             game_type: self.game_type,
-            battlesnake_ids: self.selected_battlesnake_ids.iter().copied().collect(),
+            battlesnake_ids: self.selected_battlesnake_ids.clone(),
         })
     }
 
@@ -287,7 +298,7 @@ impl GameCreationFlow {
             return Ok(Vec::new());
         }
 
-        let ids: Vec<Uuid> = self.selected_battlesnake_ids.iter().copied().collect();
+        let ids: Vec<Uuid> = self.selected_battlesnake_ids.to_vec();
 
         let battlesnakes = sqlx::query_as!(
             Battlesnake,
@@ -339,7 +350,7 @@ impl From<GameCreationFlowRaw> for GameCreationFlow {
             flow_id: raw.flow_id,
             board_size,
             game_type,
-            selected_battlesnake_ids: raw.selected_battlesnakes.into_iter().collect(),
+            selected_battlesnake_ids: raw.selected_battlesnakes,
             search_query: raw.search_query,
             user_id: raw.user_id,
             created_at: raw.created_at,

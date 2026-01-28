@@ -181,7 +181,7 @@ test.describe('Games API', () => {
       expect(body).toContain('Maximum of 4 snakes allowed');
     });
 
-    test('rejects game with duplicate snake IDs', async ({ authenticatedPage }) => {
+    test('allows game with duplicate snake IDs (same snake multiple times)', async ({ authenticatedPage }) => {
       const snakeName = `Duplicate API ${Date.now()}`;
 
       // Create a battlesnake
@@ -197,6 +197,7 @@ test.describe('Games API', () => {
       );
       const snakeId = snakes[0].battlesnake_id;
 
+      // Create a game with the same snake twice
       const response = await authenticatedPage.request.post('/api/games', {
         data: {
           snakes: [snakeId, snakeId],
@@ -205,9 +206,56 @@ test.describe('Games API', () => {
         }
       });
 
-      expect(response.status()).toBe(400);
-      const body = await response.text();
-      expect(body).toContain('Duplicate snake IDs are not allowed');
+      expect(response.status()).toBe(201);
+      const body = await response.json();
+      expect(body.id).toBeDefined();
+      expect(body.status).toBe('waiting');
+
+      // Verify the game has 2 entries for the same snake
+      const gameSnakes = await query<{ battlesnake_id: string }>(
+        "SELECT battlesnake_id FROM game_battlesnakes WHERE game_id = $1",
+        [body.id]
+      );
+      expect(gameSnakes.length).toBe(2);
+      expect(gameSnakes[0].battlesnake_id).toBe(snakeId);
+      expect(gameSnakes[1].battlesnake_id).toBe(snakeId);
+    });
+
+    test('allows game with same snake 4 times', async ({ authenticatedPage }) => {
+      const snakeName = `Quad Snake ${Date.now()}`;
+
+      // Create a battlesnake
+      await authenticatedPage.goto('/battlesnakes/new');
+      await authenticatedPage.getByLabel('Name').fill(snakeName);
+      await authenticatedPage.getByLabel('URL').fill('https://example.com/quad-api');
+      await authenticatedPage.getByLabel('Visibility').selectOption('public');
+      await authenticatedPage.getByRole('button', { name: 'Create Battlesnake' }).click();
+
+      const snakes = await query<{ battlesnake_id: string }>(
+        "SELECT battlesnake_id FROM battlesnakes WHERE name = $1",
+        [snakeName]
+      );
+      const snakeId = snakes[0].battlesnake_id;
+
+      // Create a game with the same snake 4 times
+      const response = await authenticatedPage.request.post('/api/games', {
+        data: {
+          snakes: [snakeId, snakeId, snakeId, snakeId],
+          board: '11x11',
+          game_type: 'standard'
+        }
+      });
+
+      expect(response.status()).toBe(201);
+      const body = await response.json();
+      expect(body.id).toBeDefined();
+
+      // Verify the game has 4 entries for the same snake
+      const gameSnakes = await query<{ battlesnake_id: string }>(
+        "SELECT battlesnake_id FROM game_battlesnakes WHERE game_id = $1",
+        [body.id]
+      );
+      expect(gameSnakes.length).toBe(4);
     });
 
     test('rejects game with invalid snake ID', async ({ authenticatedPage }) => {
