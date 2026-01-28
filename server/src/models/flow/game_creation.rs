@@ -358,3 +358,129 @@ impl From<GameCreationFlowRaw> for GameCreationFlow {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_flow() -> GameCreationFlow {
+        GameCreationFlow {
+            flow_id: Uuid::new_v4(),
+            board_size: GameBoardSize::Medium,
+            game_type: GameType::Standard,
+            selected_battlesnake_ids: Vec::new(),
+            search_query: None,
+            user_id: Uuid::new_v4(),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_add_battlesnake_allows_duplicates() {
+        let mut flow = create_test_flow();
+        let snake_id = Uuid::new_v4();
+
+        // Add the same snake twice
+        assert!(flow.add_battlesnake(snake_id));
+        assert!(flow.add_battlesnake(snake_id));
+
+        assert_eq!(flow.selected_count(), 2);
+        assert_eq!(flow.battlesnake_count(&snake_id), 2);
+    }
+
+    #[test]
+    fn test_add_battlesnake_respects_max_4() {
+        let mut flow = create_test_flow();
+        let snake_id = Uuid::new_v4();
+
+        // Add the same snake 4 times
+        assert!(flow.add_battlesnake(snake_id));
+        assert!(flow.add_battlesnake(snake_id));
+        assert!(flow.add_battlesnake(snake_id));
+        assert!(flow.add_battlesnake(snake_id));
+
+        // 5th should fail
+        assert!(!flow.add_battlesnake(snake_id));
+        assert_eq!(flow.selected_count(), 4);
+    }
+
+    #[test]
+    fn test_remove_battlesnake_removes_one_at_a_time() {
+        let mut flow = create_test_flow();
+        let snake_id = Uuid::new_v4();
+
+        // Add the same snake 3 times
+        flow.add_battlesnake(snake_id);
+        flow.add_battlesnake(snake_id);
+        flow.add_battlesnake(snake_id);
+        assert_eq!(flow.battlesnake_count(&snake_id), 3);
+
+        // Remove one
+        assert!(flow.remove_battlesnake(snake_id));
+        assert_eq!(flow.battlesnake_count(&snake_id), 2);
+
+        // Remove another
+        assert!(flow.remove_battlesnake(snake_id));
+        assert_eq!(flow.battlesnake_count(&snake_id), 1);
+
+        // Remove last one
+        assert!(flow.remove_battlesnake(snake_id));
+        assert_eq!(flow.battlesnake_count(&snake_id), 0);
+
+        // Can't remove what's not there
+        assert!(!flow.remove_battlesnake(snake_id));
+    }
+
+    #[test]
+    fn test_battlesnake_count_with_mixed_snakes() {
+        let mut flow = create_test_flow();
+        let snake_a = Uuid::new_v4();
+        let snake_b = Uuid::new_v4();
+
+        flow.add_battlesnake(snake_a);
+        flow.add_battlesnake(snake_b);
+        flow.add_battlesnake(snake_a);
+
+        assert_eq!(flow.battlesnake_count(&snake_a), 2);
+        assert_eq!(flow.battlesnake_count(&snake_b), 1);
+        assert_eq!(flow.selected_count(), 3);
+    }
+
+    #[test]
+    fn test_is_battlesnake_selected() {
+        let mut flow = create_test_flow();
+        let snake_id = Uuid::new_v4();
+        let other_snake = Uuid::new_v4();
+
+        assert!(!flow.is_battlesnake_selected(&snake_id));
+
+        flow.add_battlesnake(snake_id);
+        assert!(flow.is_battlesnake_selected(&snake_id));
+        assert!(!flow.is_battlesnake_selected(&other_snake));
+    }
+
+    #[test]
+    fn test_validate_requires_at_least_one_snake() {
+        let flow = create_test_flow();
+        assert!(flow.validate().is_err());
+
+        let mut flow_with_snake = create_test_flow();
+        flow_with_snake.add_battlesnake(Uuid::new_v4());
+        assert!(flow_with_snake.validate().is_ok());
+    }
+
+    #[test]
+    fn test_to_create_game_request_preserves_duplicates() {
+        let mut flow = create_test_flow();
+        let snake_id = Uuid::new_v4();
+
+        flow.add_battlesnake(snake_id);
+        flow.add_battlesnake(snake_id);
+        flow.add_battlesnake(snake_id);
+
+        let request = flow.to_create_game_request().unwrap();
+        assert_eq!(request.battlesnake_ids.len(), 3);
+        assert!(request.battlesnake_ids.iter().all(|&id| id == snake_id));
+    }
+}
