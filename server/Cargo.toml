@@ -67,7 +67,7 @@ google-cloud-storage = "0.22"
 zstd = "0.13"
 thiserror = "1"
 hex = "0.4"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "env"] }
 dirs = "5"
 toml = "0.8"
 open = "5"
@@ -93,6 +93,10 @@ path = "src/main.rs"
 [[bin]]
 name = "arena-cli"
 path = "src/bin/arena-cli.rs"
+
+[[bin]]
+name = "stress-test"
+path = "src/bin/stress_test.rs"
 
 [build-dependencies]
 vergen = { version = "8.3.1", features = [
