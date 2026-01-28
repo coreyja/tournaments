@@ -172,7 +172,7 @@ pub async fn show_game_flow(
                                         // Always show Add button if under 4 total snakes
                                         @if can_add {
                                             form action={"/games/flow/"(flow_id)"/add-snake/"(snake.battlesnake_id)} method="post" class="flex-grow-1" {
-                                                button type="submit" class="btn btn-primary w-100" { "Add" }
+                                                button type="submit" class="btn btn-primary w-100" { "Add to Game" }
                                             }
                                         }
                                         // Show Remove button if this snake is selected
@@ -460,7 +460,7 @@ async fn render_search_results(flow: &GameCreationFlow, db: &sqlx::PgPool) -> ma
                                 // Always show Add button if under 4 total snakes
                                 @if can_add {
                                     form action={"/games/flow/"(flow.flow_id)"/add-snake/"(snake.battlesnake_id)} method="post" class="flex-grow-1" {
-                                        button type="submit" class="btn btn-primary w-100" { "Add" }
+                                        button type="submit" class="btn btn-primary w-100" { "Add to Game" }
                                     }
                                 }
                                 // Show Remove button if this snake is selected
