@@ -9,6 +9,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+use url::Url;
 
 /// Response from a snake's /move endpoint
 #[derive(Debug, Deserialize)]
@@ -52,6 +53,24 @@ fn parse_direction(s: &str) -> Option<Move> {
     }
 }
 
+/// Build a URL for a snake endpoint, properly handling query parameters
+///
+/// This appends the endpoint path (e.g., "move", "start", "end") to the base URL
+/// while preserving any query parameters in the correct position.
+fn build_endpoint_url(base_url: &str, endpoint: &str) -> String {
+    // Try to parse as a proper URL
+    if let Ok(mut url) = Url::parse(base_url) {
+        // Get the current path, trim trailing slashes, and append the endpoint
+        let current_path = url.path().trim_end_matches('/');
+        let new_path = format!("{}/{}", current_path, endpoint);
+        url.set_path(&new_path);
+        url.to_string()
+    } else {
+        // Fallback to simple string concatenation if URL parsing fails
+        format!("{}/{}", base_url.trim_end_matches('/'), endpoint)
+    }
+}
+
 /// Call a snake's /move endpoint
 ///
 /// On timeout or error, falls back to the last direction (or Up if no last direction).
@@ -64,7 +83,7 @@ pub async fn request_move(
     last_direction: Option<Move>,
 ) -> MoveResult {
     let request_body = build_request_for_snake(game, snake);
-    let move_url = format!("{}/move", url.trim_end_matches('/'));
+    let move_url = build_endpoint_url(url, "move");
 
     let start = Instant::now();
 
@@ -146,7 +165,7 @@ pub async fn request_start(
     timeout: Duration,
 ) {
     let request_body = build_request_for_snake(game, snake);
-    let start_url = format!("{}/start", url.trim_end_matches('/'));
+    let start_url = build_endpoint_url(url, "start");
 
     // Fire and forget - ignore result but log errors
     match tokio::time::timeout(timeout, client.post(&start_url).json(&request_body).send()).await {
@@ -171,7 +190,7 @@ pub async fn request_end(
     timeout: Duration,
 ) {
     let request_body = build_request_for_snake(game, snake);
-    let end_url = format!("{}/end", url.trim_end_matches('/'));
+    let end_url = build_endpoint_url(url, "end");
 
     // Fire and forget - ignore result but log errors
     match tokio::time::timeout(timeout, client.post(&end_url).json(&request_body).send()).await {
@@ -265,6 +284,59 @@ mod tests {
     use super::*;
     use battlesnake_game_types::wire_representation::{Board, NestedGame, Position, Ruleset};
     use std::collections::VecDeque;
+
+    #[test]
+    fn test_build_endpoint_url_simple() {
+        let url = build_endpoint_url("https://example.com", "move");
+        assert_eq!(url, "https://example.com/move");
+    }
+
+    #[test]
+    fn test_build_endpoint_url_with_trailing_slash() {
+        let url = build_endpoint_url("https://example.com/", "move");
+        assert_eq!(url, "https://example.com/move");
+    }
+
+    #[test]
+    fn test_build_endpoint_url_with_path() {
+        let url = build_endpoint_url("https://example.com/api/v1", "move");
+        assert_eq!(url, "https://example.com/api/v1/move");
+    }
+
+    #[test]
+    fn test_build_endpoint_url_with_query_params() {
+        let url = build_endpoint_url("https://example.com?token=secret", "move");
+        assert_eq!(url, "https://example.com/move?token=secret");
+    }
+
+    #[test]
+    fn test_build_endpoint_url_with_path_and_query_params() {
+        let url = build_endpoint_url("https://example.com/api?token=secret&version=2", "move");
+        assert_eq!(url, "https://example.com/api/move?token=secret&version=2");
+    }
+
+    #[test]
+    fn test_build_endpoint_url_with_trailing_slash_and_query_params() {
+        let url = build_endpoint_url("https://example.com/api/?token=secret", "start");
+        assert_eq!(url, "https://example.com/api/start?token=secret");
+    }
+
+    #[test]
+    fn test_build_endpoint_url_all_endpoints() {
+        let base = "https://snake.example.com?auth=abc123";
+        assert_eq!(
+            build_endpoint_url(base, "move"),
+            "https://snake.example.com/move?auth=abc123"
+        );
+        assert_eq!(
+            build_endpoint_url(base, "start"),
+            "https://snake.example.com/start?auth=abc123"
+        );
+        assert_eq!(
+            build_endpoint_url(base, "end"),
+            "https://snake.example.com/end?auth=abc123"
+        );
+    }
 
     fn create_test_snake(id: &str) -> BattleSnake {
         BattleSnake {
