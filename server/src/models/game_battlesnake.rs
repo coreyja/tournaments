@@ -202,7 +202,8 @@ pub async fn remove_battlesnake_from_game(
     Ok(())
 }
 
-// Set the result of a game for a battlesnake
+// Set the result of a game for a battlesnake (by battlesnake_id)
+// Note: This may not work correctly with duplicate snakes in a game
 pub async fn set_game_result(
     pool: &PgPool,
     game_id: Uuid,
@@ -233,6 +234,43 @@ pub async fn set_game_result(
         game_id,
         battlesnake_id,
         data.placement
+    )
+    .fetch_one(pool)
+    .await
+    .wrap_err("Failed to set game result")?;
+
+    Ok(game_battlesnake)
+}
+
+// Set the result for a specific game_battlesnake (supports duplicate snakes)
+pub async fn set_game_result_by_id(
+    pool: &PgPool,
+    game_battlesnake_id: Uuid,
+    placement: i32,
+) -> cja::Result<GameBattlesnake> {
+    // Validate placement is between 1 and 4
+    if !(1..=4).contains(&placement) {
+        return Err(cja::color_eyre::eyre::eyre!(
+            "Placement must be between 1 and 4"
+        ));
+    }
+
+    let game_battlesnake = sqlx::query_as!(
+        GameBattlesnake,
+        r#"
+        UPDATE game_battlesnakes
+        SET placement = $2
+        WHERE game_battlesnake_id = $1
+        RETURNING
+            game_battlesnake_id,
+            game_id,
+            battlesnake_id,
+            placement,
+            created_at,
+            updated_at
+        "#,
+        game_battlesnake_id,
+        placement
     )
     .fetch_one(pool)
     .await

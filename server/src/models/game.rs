@@ -540,16 +540,11 @@ pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja:
         return Err(cja::color_eyre::eyre::eyre!("No battlesnakes in the game"));
     }
 
-    // Build snake_id -> url mapping
+    // Build snake_id -> url mapping using game_battlesnake_id as the key
+    // This ensures uniqueness when the same battlesnake appears multiple times
     let snake_urls: Vec<(String, String)> = battlesnakes
         .iter()
-        .map(|bs| (bs.battlesnake_id.to_string(), bs.url.clone()))
-        .collect();
-
-    // Build snake_id -> game_battlesnake_id mapping for DB storage
-    let snake_db_ids: HashMap<String, Uuid> = battlesnakes
-        .iter()
-        .map(|bs| (bs.battlesnake_id.to_string(), bs.game_battlesnake_id))
+        .map(|bs| (bs.game_battlesnake_id.to_string(), bs.url.clone()))
         .collect();
 
     // Create the initial game state
@@ -646,12 +641,13 @@ pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja:
         .await?;
 
         // Store individual snake moves with latency
+        // The snake_id in move_results is now the game_battlesnake_id (UUID string)
         for result in &move_results {
-            if let Some(game_battlesnake_id) = snake_db_ids.get(&result.snake_id) {
+            if let Ok(game_battlesnake_id) = Uuid::parse_str(&result.snake_id) {
                 crate::models::turn::create_snake_turn(
                     pool,
                     turn.turn_id,
-                    *game_battlesnake_id,
+                    game_battlesnake_id,
                     &result.direction.to_string(),
                     result.latency_ms,
                     result.timed_out,
@@ -720,26 +716,22 @@ pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja:
     placements.extend(elimination_order);
 
     // Assign placements to database
+    // snake_id is now game_battlesnake_id (unique per game instance)
     for (i, snake_id) in placements.iter().enumerate() {
         let placement = (i + 1) as i32;
 
-        let battlesnake_id: Uuid = snake_id
+        let game_battlesnake_id: Uuid = snake_id
             .parse()
-            .wrap_err_with(|| format!("Invalid battlesnake ID: {}", snake_id))?;
+            .wrap_err_with(|| format!("Invalid game_battlesnake ID: {}", snake_id))?;
 
-        crate::models::game_battlesnake::set_game_result(
-            pool,
-            game_id,
-            battlesnake_id,
-            crate::models::game_battlesnake::SetGameResult { placement },
-        )
-        .await
-        .wrap_err_with(|| {
-            format!(
-                "Failed to set game result for battlesnake {}",
-                battlesnake_id
-            )
-        })?;
+        crate::models::game_battlesnake::set_game_result_by_id(pool, game_battlesnake_id, placement)
+            .await
+            .wrap_err_with(|| {
+                format!(
+                    "Failed to set game result for game_battlesnake {}",
+                    game_battlesnake_id
+                )
+            })?;
     }
 
     // Update status to finished
