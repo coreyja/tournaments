@@ -54,13 +54,15 @@ pub fn create_initial_game(
     let spawn_positions = generate_spawn_positions(width, height, battlesnakes.len());
 
     // Create snakes at spawn positions
+    // Use game_battlesnake_id as the snake ID to ensure uniqueness when the same
+    // battlesnake appears multiple times in a game (duplicate snakes)
     let snakes: Vec<BattleSnake> = battlesnakes
         .iter()
         .zip(spawn_positions.iter())
         .map(|(bs, pos)| {
             let body: VecDeque<Position> = (0..SNAKE_START_SIZE).map(|_| *pos).collect();
             BattleSnake {
-                id: bs.battlesnake_id.to_string(),
+                id: bs.game_battlesnake_id.to_string(),
                 name: bs.name.clone(),
                 head: *pos,
                 body,
@@ -875,5 +877,68 @@ mod tests {
                 source: None,
             },
         }
+    }
+
+    /// Test that create_initial_game assigns unique IDs when the same battlesnake
+    /// appears multiple times (duplicate snakes in a game)
+    #[test]
+    fn test_create_initial_game_duplicate_snakes_have_unique_ids() {
+        use crate::models::game::{GameBoardSize, GameType};
+        use crate::models::game_battlesnake::GameBattlesnakeWithDetails;
+        use uuid::Uuid;
+
+        // Same battlesnake_id but different game_battlesnake_ids (as would happen with duplicates)
+        let shared_battlesnake_id = Uuid::new_v4();
+        let battlesnakes = vec![
+            GameBattlesnakeWithDetails {
+                game_battlesnake_id: Uuid::new_v4(),
+                game_id: Uuid::new_v4(),
+                battlesnake_id: shared_battlesnake_id,
+                placement: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+                name: "Duplicate Snake".to_string(),
+                url: "https://example.com/snake".to_string(),
+                user_id: Uuid::new_v4(),
+            },
+            GameBattlesnakeWithDetails {
+                game_battlesnake_id: Uuid::new_v4(),
+                game_id: Uuid::new_v4(),
+                battlesnake_id: shared_battlesnake_id, // Same battlesnake_id
+                placement: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+                name: "Duplicate Snake".to_string(),
+                url: "https://example.com/snake".to_string(),
+                user_id: Uuid::new_v4(),
+            },
+        ];
+
+        let game = create_initial_game(
+            Uuid::new_v4(),
+            GameBoardSize::Medium,
+            GameType::Standard,
+            &battlesnakes,
+        );
+
+        // Verify we have 2 snakes
+        assert_eq!(game.board.snakes.len(), 2);
+
+        // Verify the snake IDs are unique (they should be game_battlesnake_ids)
+        let snake_ids: Vec<&str> = game.board.snakes.iter().map(|s| s.id.as_str()).collect();
+        assert_ne!(
+            snake_ids[0], snake_ids[1],
+            "Duplicate snakes should have unique IDs (game_battlesnake_id)"
+        );
+
+        // Verify the IDs are the game_battlesnake_ids, not the battlesnake_ids
+        assert_eq!(
+            snake_ids[0],
+            battlesnakes[0].game_battlesnake_id.to_string()
+        );
+        assert_eq!(
+            snake_ids[1],
+            battlesnakes[1].game_battlesnake_id.to_string()
+        );
     }
 }
