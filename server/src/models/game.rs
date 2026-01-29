@@ -724,14 +724,18 @@ pub async fn run_game(app_state: &crate::state::AppState, game_id: Uuid) -> cja:
             .parse()
             .wrap_err_with(|| format!("Invalid game_battlesnake ID: {}", snake_id))?;
 
-        crate::models::game_battlesnake::set_game_result_by_id(pool, game_battlesnake_id, placement)
-            .await
-            .wrap_err_with(|| {
-                format!(
-                    "Failed to set game result for game_battlesnake {}",
-                    game_battlesnake_id
-                )
-            })?;
+        crate::models::game_battlesnake::set_game_result_by_id(
+            pool,
+            game_battlesnake_id,
+            placement,
+        )
+        .await
+        .wrap_err_with(|| {
+            format!(
+                "Failed to set game result for game_battlesnake {}",
+                game_battlesnake_id
+            )
+        })?;
     }
 
     // Update status to finished
