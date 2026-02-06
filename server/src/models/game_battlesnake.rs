@@ -279,6 +279,73 @@ pub async fn set_game_result_by_id(
     Ok(game_battlesnake)
 }
 
+// Game history entry for snake profile page
+#[derive(Debug)]
+pub struct GameHistoryEntry {
+    pub game_id: Uuid,
+    pub board_size: GameBoardSize,
+    pub game_type: GameType,
+    pub status: GameStatus,
+    pub placement: Option<i32>,
+    pub snake_count: i64,
+    pub winner_name: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+// Get game history for a battlesnake (for profile page)
+pub async fn get_game_history_for_battlesnake(
+    pool: &PgPool,
+    battlesnake_id: Uuid,
+) -> cja::Result<Vec<GameHistoryEntry>> {
+    let rows = sqlx::query!(
+        r#"
+        SELECT
+            g.game_id,
+            g.board_size,
+            g.game_type,
+            g.status,
+            gb_self.placement,
+            (SELECT COUNT(*) FROM game_battlesnakes gb2 WHERE gb2.game_id = g.game_id) as "snake_count!",
+            winner_b.name as "winner_name?",
+            g.created_at
+        FROM games g
+        JOIN game_battlesnakes gb_self ON g.game_id = gb_self.game_id AND gb_self.battlesnake_id = $1
+        LEFT JOIN game_battlesnakes gb_winner ON g.game_id = gb_winner.game_id AND gb_winner.placement = 1
+        LEFT JOIN battlesnakes winner_b ON gb_winner.battlesnake_id = winner_b.battlesnake_id
+        ORDER BY g.created_at DESC
+        "#,
+        battlesnake_id
+    )
+    .fetch_all(pool)
+    .await
+    .wrap_err("Failed to fetch game history for battlesnake")?;
+
+    let entries = rows
+        .into_iter()
+        .map(|row| {
+            let board_size = GameBoardSize::from_str(&row.board_size)
+                .wrap_err_with(|| format!("Invalid board size: {}", row.board_size))?;
+            let game_type = GameType::from_str(&row.game_type)
+                .wrap_err_with(|| format!("Invalid game type: {}", row.game_type))?;
+            let status = GameStatus::from_str(&row.status)
+                .wrap_err_with(|| format!("Invalid game status: {}", row.status))?;
+
+            Ok(GameHistoryEntry {
+                game_id: row.game_id,
+                board_size,
+                game_type,
+                status,
+                placement: row.placement,
+                snake_count: row.snake_count,
+                winner_name: row.winner_name,
+                created_at: row.created_at,
+            })
+        })
+        .collect::<cja::Result<Vec<_>>>()?;
+
+    Ok(entries)
+}
+
 // Get a game with all its battlesnakes
 pub async fn get_game_with_battlesnakes(
     pool: &PgPool,

@@ -74,6 +74,10 @@ pub fn routes(app_state: AppState) -> axum::Router {
             "/battlesnakes/{id}/delete",
             axum::routing::post(battlesnake::delete_battlesnake),
         )
+        .route(
+            "/battlesnakes/{id}/profile",
+            get(battlesnake::view_battlesnake_profile),
+        )
         // Game routes
         .route("/games", get(game::list_games))
         .route("/games/new", get(game::new_game))
