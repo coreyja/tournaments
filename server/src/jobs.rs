@@ -27,7 +27,7 @@ impl Job<AppState> for GameRunnerJob {
 
     async fn run(&self, app_state: AppState) -> cja::Result<()> {
         // Run the game with HTTP calls to snake APIs, turn-by-turn persistence, and WebSocket notifications
-        crate::models::game::run_game(&app_state, self.game_id).await?;
+        crate::game_runner::run_game(&app_state, self.game_id).await?;
         Ok(())
     }
 }
