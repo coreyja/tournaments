@@ -27,8 +27,12 @@ impl AppState {
 
             let database_url =
                 std::env::var("DATABASE_URL").wrap_err("DATABASE_URL must be set")?;
+            let max_connections: u32 = std::env::var("ARENA_PG_MAX_CONNECTIONS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(5);
             let pool = PgPoolOptions::new()
-                .max_connections(5)
+                .max_connections(max_connections)
                 .connect(&database_url)
                 .await?;
 
