@@ -37,11 +37,18 @@ fn main() -> color_eyre::Result<()> {
     // Initialize Sentry for error tracking
     let _sentry_guard = setup_sentry();
 
-    // Configure tokio worker threads (default: 4)
-    let worker_threads: usize = std::env::var("ARENA_TOKIO_WORKER_THREADS")
+    // Configure tokio worker threads as a multiplier on CPU core count.
+    // Since game execution is I/O-bound (snake API calls ~500ms each),
+    // we want many more threads than cores to maximize throughput.
+    let core_count = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1);
+    let multiplier: usize = std::env::var("ARENA_TOKIO_WORKER_MULTIPLIER")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(4);
+        .unwrap_or(2);
+    let worker_threads = core_count * multiplier;
+    eprintln!("Tokio workers: {worker_threads} ({core_count} cores x {multiplier} multiplier)");
 
     // Create and run the tokio runtime
     tokio::runtime::Builder::new_multi_thread()
